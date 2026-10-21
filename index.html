@@ -1,0 +1,1800 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FLYT — prodbyJMD</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #090a0f;
+      color: #f4f4f5;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      padding: 28px 24px 60px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 1080px;
+      margin: 0 auto;
+    }
+
+    /* HEADER */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .brand-block {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo {
+      font-size: 21px;
+      font-weight: 800;
+      letter-spacing: -0.6px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .logo-tag {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      color: #71717a;
+      border: 1px solid transparent;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    /* WORKFLOW STEPS IN INFO DIALOG */
+    .workflow-bar {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      background: #090a0f;
+      border: 1px solid transparent;
+      border-radius: 12px;
+      padding: 16px 18px;
+      margin-top: 8px;
+    }
+    .flow-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      font-size: 12.5px;
+      line-height: 1.45;
+      color: #71717a;
+    }
+    .flow-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #71717a;
+      margin-top: 7px;
+      flex-shrink: 0;
+    }
+    .flow-step strong {
+      display: block;
+      color: #e4e4e7;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    /* DROP AREA INSIDE UPLOAD DIALOG */
+    .upload-area {
+      border: 1px solid transparent;
+      border-radius: 12px;
+      padding: 36px 24px;
+      text-align: center;
+      background: #090a0f;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      margin-top: 8px;
+    }
+    .upload-area:hover, .upload-area.dragover {
+      border-color: rgba(255, 255, 255, 0.22);
+      background: #0d0f17;
+    }
+    .upload-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 5px;
+      color: #e4e4e7;
+    }
+    .upload-subtitle {
+      font-size: 12.5px;
+      color: #71717a;
+    }
+
+    /* PROJECT CARD (BORDERLESS BY DEFAULT, HOVER BORDER ONLY) */
+    .project-card {
+      background: #111218;
+      border: 1px solid transparent;
+      border-radius: 14px;
+      padding: 18px;
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      gap: 22px;
+      margin-bottom: 14px;
+      align-items: center;
+      transition: all 0.22s ease;
+    }
+    .project-card:hover {
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+    .project-card.completing {
+      opacity: 0;
+      transform: scale(0.97) translateY(-6px);
+      pointer-events: none;
+    }
+    @media (max-width: 780px) {
+      .project-card { grid-template-columns: 1fr; }
+    }
+
+    .thumb-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16/9;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #000;
+    }
+
+    .artwork-thumb {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .thumb-overlay-actions {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+    .thumb-wrap:hover .thumb-overlay-actions {
+      opacity: 1;
+    }
+
+    .btn-thumb {
+      background: rgba(9, 10, 15, 0.85);
+      backdrop-filter: blur(6px);
+      color: #e4e4e7;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      padding: 4px 9px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn-thumb:hover {
+      border-color: rgba(255, 255, 255, 0.35);
+      background: #090a0f;
+      color: #fff;
+    }
+
+    .card-info {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .card-title-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .card-title {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: #fff;
+      margin-right: 4px;
+    }
+
+    .card-badges {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    /* BADGES (NO BORDERS) */
+    .badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      color: #a1a1aa;
+      border: 1px solid transparent;
+    }
+    .badge-green {
+      color: #6ee7b7;
+      background: rgba(16, 185, 129, 0.11);
+    }
+    .badge-purple {
+      color: #d8b4fe;
+      background: rgba(168, 85, 247, 0.12);
+    }
+    .badge-cloud {
+      color: #93c5fd;
+      background: rgba(59, 130, 246, 0.10);
+    }
+    .badge-active {
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.12);
+    }
+
+    /* LIVE RENDER PROGRESS MONITOR (BORDERLESS & CLEAN) */
+    .render-monitor {
+      background: #0b0c12;
+      border: 1px solid transparent;
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .render-monitor.visible {
+      display: flex;
+    }
+
+    .rm-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+    }
+    .rm-stage {
+      font-weight: 600;
+      color: #e4e4e7;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .rm-spinner {
+      width: 11px;
+      height: 11px;
+      border: 2px solid rgba(56, 189, 248, 0.25);
+      border-top-color: #38bdf8;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .rm-meta {
+      font-size: 11.5px;
+      color: #38bdf8;
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+    }
+
+    .rm-bar-track {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .rm-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #38bdf8, #10b981);
+      border-radius: 999px;
+      transition: width 0.3s ease;
+    }
+
+    .rm-substeps {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: #71717a;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-variant-numeric: tabular-nums;
+    }
+    .rm-subpills {
+      display: flex;
+      gap: 12px;
+    }
+    .rm-subpills span strong {
+      color: #d4d4d8;
+    }
+
+    /* CUSTOM DARK AUDIO PLAYER */
+    .audio-player {
+      background: #0b0c12;
+      border: 1px solid transparent;
+      border-radius: 9px;
+      padding: 6px 11px;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      transition: border-color 0.15s ease, background 0.15s ease;
+      user-select: none;
+    }
+    .audio-player:hover {
+      border-color: rgba(255, 255, 255, 0.14);
+      background: #0d0e15;
+    }
+    .aud-play-btn {
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid transparent;
+      color: #e4e4e7;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.15s ease;
+    }
+    .aud-play-btn:hover {
+      background: rgba(255, 255, 255, 0.14);
+      border-color: rgba(255, 255, 255, 0.25);
+      color: #fff;
+    }
+    .audio-player.playing .aud-play-btn {
+      background: #fff;
+      color: #000;
+    }
+    .aud-track-wrap {
+      flex: 1;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+    }
+    .aud-track {
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      overflow: hidden;
+      position: relative;
+      transition: height 0.12s ease;
+    }
+    .aud-track-wrap:hover .aud-track {
+      height: 6px;
+      background: rgba(255, 255, 255, 0.13);
+    }
+    .aud-fill {
+      height: 100%;
+      width: 0%;
+      background: #e4e4e7;
+      border-radius: 999px;
+    }
+    .aud-time {
+      font-size: 11px;
+      color: #71717a;
+      font-variant-numeric: tabular-nums;
+      min-width: 72px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    /* GUIDED ACTION BAR & STEP DROPDOWN */
+    .action-bar {
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .step-dropdown {
+      position: relative;
+      display: inline-block;
+    }
+
+    .step-dropdown-toggle {
+      justify-content: space-between;
+      padding: 6px 11px;
+      font-size: 12px;
+    }
+
+    .step-dropdown-chevron {
+      font-size: 10px;
+      opacity: 0.7;
+      margin-left: 5px;
+      transition: transform 0.15s ease;
+    }
+
+    .step-dropdown.open .step-dropdown-chevron {
+      transform: rotate(180deg);
+    }
+
+    .step-dropdown-menu {
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 0;
+      min-width: 195px;
+      background: #0d0e14;
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      border-radius: 10px;
+      padding: 6px;
+      display: none;
+      flex-direction: column;
+      gap: 4px;
+      z-index: 80;
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.7);
+    }
+
+    .step-dropdown.open .step-dropdown-menu {
+      display: flex;
+    }
+
+    .step-dropdown-menu .btn {
+      width: 100%;
+      justify-content: flex-start;
+      padding: 8px 12px;
+      border-radius: 7px;
+    }
+
+    .util-buttons {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+
+    /* BUTTONS: NO BORDERS BY DEFAULT, BORDER ONLY ON HOVER */
+    .btn {
+      background: rgba(255, 255, 255, 0.055);
+      color: #d4d4d8;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 7px 13px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .btn:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.09);
+      border-color: rgba(255, 255, 255, 0.24);
+      color: #fff;
+    }
+    .btn:disabled {
+      opacity: 0.24;
+      cursor: not-allowed;
+      background: rgba(255, 255, 255, 0.025);
+      color: #71717a;
+    }
+
+    /* ACTIVE NEXT TODO STEP */
+    .btn-todo {
+      background: #fff;
+      color: #000;
+      border: 1px solid transparent;
+    }
+    .btn-todo:hover:not(:disabled) {
+      background: #e4e4e7;
+      color: #000;
+      border-color: #fff;
+    }
+
+    /* FINISHED VIDEO PLAY BUTTONS */
+    .btn-ready {
+      background: rgba(255, 255, 255, 0.09);
+      color: #fff;
+      border: 1px solid transparent;
+    }
+    .btn-ready:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.14);
+      border-color: rgba(255, 255, 255, 0.28);
+    }
+
+    /* GREEN CHECKMARK BUTTON TO COMPLETE & HIDE COMPONENT */
+    .btn-check-done {
+      background: rgba(16, 185, 129, 0.16);
+      color: #34d399;
+      border: 1px solid transparent;
+      padding: 7px 11px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .btn-check-done:hover:not(:disabled) {
+      background: rgba(16, 185, 129, 0.26);
+      color: #6ee7b7;
+      border-color: rgba(16, 185, 129, 0.5);
+    }
+
+    .btn-muted {
+      background: transparent;
+      color: #71717a;
+      border: 1px solid transparent;
+      padding: 6px 9px;
+      font-size: 12px;
+    }
+    .btn-muted:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.05);
+      color: #e4e4e7;
+      border-color: rgba(255, 255, 255, 0.16);
+    }
+
+    .btn-danger {
+      background: transparent;
+      color: #71717a;
+      border: 1px solid transparent;
+      padding: 6px 9px;
+    }
+    .btn-danger:hover:not(:disabled) {
+      color: #f87171;
+      background: rgba(239, 68, 68, 0.10);
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+
+    /* MODAL */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.82);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 20px;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: #12131a;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      max-width: 650px;
+      width: 100%;
+      max-height: 86vh;
+      overflow-y: auto;
+      padding: 24px;
+    }
+    .modal pre {
+      background: #090a0f;
+      border: 1px solid transparent;
+      padding: 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      color: #d4d4d8;
+      margin: 14px 0;
+      max-height: 50vh;
+      overflow-y: auto;
+    }
+
+    .form-input, .form-select {
+      width: 100%;
+      background: #090a0f;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #fff;
+      font-family: inherit;
+      font-size: 13px;
+      margin-top: 6px;
+      margin-bottom: 14px;
+      transition: border-color 0.15s ease;
+    }
+    .form-input:hover, .form-select:hover,
+    .form-input:focus, .form-select:focus {
+      outline: none;
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .video-preview-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      margin: 14px 0;
+    }
+    .video-preview-box video {
+      border-radius: 10px;
+      background: #000;
+      max-width: 100%;
+      max-height: 62vh;
+    }
+
+    /* THUMBNAIL GENERATOR */
+    .thumb-gen-row { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
+    .thumb-gen-row .form-input { margin: 0; flex: 1; }
+    .artist-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px; }
+    .artist-chip {
+      font-size: 11.5px; padding: 4px 10px; border-radius: 999px; cursor: pointer;
+      background: rgba(255,255,255,0.06); color: #d4d4d8; border: 1px solid transparent;
+    }
+    .artist-chip:hover { border-color: rgba(255,255,255,0.25); }
+    .thumb-status { font-size: 12px; color: #a1a1aa; margin: 10px 0; min-height: 16px; }
+    .thumb-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin: 6px 0 14px; }
+    .yt-card { cursor: pointer; border-radius: 12px; padding: 6px; border: 2px solid transparent; transition: border-color .15s; }
+    .yt-card:hover { border-color: rgba(255,255,255,0.18); }
+    .yt-card.selected { border-color: #22c55e; }
+    .yt-card .yt-img-wrap { position: relative; }
+    .yt-card img { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 10px; display: block; background: #000; }
+    .yt-card .yt-dur { position: absolute; right: 6px; bottom: 6px; background: rgba(0,0,0,.8); color: #fff; font-size: 11px; font-weight: 600; padding: 1px 5px; border-radius: 4px; }
+    .yt-card .yt-sel { position: absolute; left: 6px; top: 6px; background: #22c55e; color: #000; font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 4px; display: none; }
+    .yt-card.selected .yt-sel { display: block; }
+    .yt-card .yt-title { font-size: 12.5px; font-weight: 600; color: #f4f4f5; margin-top: 8px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .yt-card .yt-sub { font-size: 11.5px; color: #a1a1aa; margin-top: 2px; }
+    .yt-card.placeholder { cursor: default; }
+    .yt-card.placeholder .yt-img-wrap { aspect-ratio: 16/9; border-radius: 10px; background: linear-gradient(90deg,#14151c 0%,#1d1f29 50%,#14151c 100%); background-size: 200% 100%; animation: shimmer 1.4s infinite linear; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+    /* TOAST */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #fff;
+      color: #000;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.2s ease;
+      pointer-events: none;
+      z-index: 999;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand-block">
+        <div class="logo">FLYT <span class="logo-tag">prodbyJMD</span></div>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-todo" onclick="openUploadModal()">+ Beat hochladen</button>
+        <button class="btn btn-muted" onclick="openInfoModal()" title="Workflow Info" aria-label="Workflow Info">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+        </button>
+        <button class="btn btn-muted" onclick="openDriveSettings()">☁️ Drive & API</button>
+        <button class="btn btn-muted" onclick="openExplorerFolder('')" title="Beats-Ordner im Explorer öffnen" aria-label="Ordner öffnen">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- PROJECTS LIST -->
+    <div id="project-list"></div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast" class="toast">Kopiert</div>
+
+  <!-- BEAT UPLOAD DIALOG -->
+  <div id="upload-modal" class="modal-overlay" onclick="closeUploadModal()">
+    <div class="modal" style="max-width: 500px;" onclick="event.stopPropagation()">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h3 style="font-size: 15px;">Beat hochladen</h3>
+        <button class="btn btn-muted" onclick="closeUploadModal()">&times;</button>
+      </div>
+      <div class="upload-area" id="mp3-drop-zone" onclick="triggerMp3Picker()">
+        <input type="file" id="mp3-input" accept=".mp3,audio/*" style="display: none;" onchange="handleMp3Selected(this.files[0])">
+        <div class="upload-title" id="upload-title-text">+ MP3 auswählen oder ablegen</div>
+        <div class="upload-subtitle">MP3 aus Windows Explorer hier ablegen oder klicken</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WORKFLOW INFO DIALOG -->
+  <div id="info-modal" class="modal-overlay" onclick="closeInfoModal()">
+    <div class="modal" style="max-width: 520px;" onclick="event.stopPropagation()">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h3 style="font-size: 15px;">Workflow Übersicht</h3>
+        <button class="btn btn-muted" onclick="closeInfoModal()">&times;</button>
+      </div>
+      <div class="workflow-bar">
+        <div class="flow-step">
+          <span class="flow-dot"></span>
+          <div>
+            <strong>Beat ablegen</strong>
+            <span>MP3 reinziehen → Unique Lithen Green-Night Cover</span>
+          </div>
+        </div>
+        <div class="flow-step">
+          <span class="flow-dot"></span>
+          <div>
+            <strong>Gemini & Loop</strong>
+            <span>Prompt in Gemini einfügen & MP4 Loop laden</span>
+          </div>
+        </div>
+        <div class="flow-step">
+          <span class="flow-dot"></span>
+          <div>
+            <strong>Hauptvideo & Short</strong>
+            <span>Rendert automatisch 1440p (16:9) & Reel/Short (9:16)</span>
+          </div>
+        </div>
+        <div class="flow-step">
+          <span class="flow-dot"></span>
+          <div>
+            <strong>Abschließen (✓)</strong>
+            <span>Texte kopieren & Beat mit grünem Haken abhaken</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIDEO PREVIEW & SHORT/REEL CONFIG MODAL -->
+  <div id="video-modal" class="modal-overlay" onclick="closeVideoModal()">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 id="video-modal-title" style="font-size: 15px;">Video Vorschau</h3>
+        <button class="btn btn-muted" onclick="closeVideoModal()">&times;</button>
+      </div>
+      <div class="video-preview-box">
+        <video id="video-modal-player" controls playsinline></video>
+      </div>
+      <div id="short-settings-panel" style="display: none; background: #090a0f; border-radius: 10px; padding: 12px; margin-bottom: 14px;">
+        <div style="font-size: 12px; font-weight: 600; margin-bottom: 8px; color: #d8b4fe;">Short / Instagram Reel Schnitt (9:16 Vertical 1080x1920):</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end;">
+          <div>
+            <label style="font-size: 11px; color: #71717a;">Startpunkt:</label>
+            <select id="short-start-select" class="form-select" style="margin-bottom: 0;">
+              <option value="0">Ab 0:00 (Intro + Drop)</option>
+              <option value="12" selected>Ab 0:12 (Drop / Hook)</option>
+              <option value="15">Ab 0:15 (Hook)</option>
+              <option value="30">Ab 0:30 (Part)</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size: 11px; color: #71717a;">Dauer:</label>
+            <select id="short-dur-select" class="form-select" style="margin-bottom: 0;">
+              <option value="30" selected>30 Sekunden</option>
+              <option value="45">45 Sekunden</option>
+              <option value="58">58 Sekunden</option>
+            </select>
+          </div>
+          <button class="btn btn-todo" onclick="reRenderCustomShort()">Neu rendern</button>
+        </div>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
+        <button class="btn" id="video-modal-folder-btn">Im Explorer zeigen</button>
+        <a class="btn btn-todo" id="video-modal-download" href="#" download>MP4 speichern</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- GOOGLE DRIVE & API SETTINGS MODAL -->
+  <div id="drive-modal" class="modal-overlay" onclick="closeDriveModal()">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 style="font-size: 15px;">Einstellungen · Google Drive, Hugging Face & Gemini API</h3>
+        <button class="btn btn-muted" onclick="closeDriveModal()">&times;</button>
+      </div>
+      <p style="font-size: 12.5px; color: #71717a; line-height: 1.5; margin-bottom: 12px;">
+        Alle Beats, Artworks, 1440p YouTube-Videos und 9:16 Shorts/Reels werden automatisch in Google Drive gesichert.
+      </p>
+      <label style="font-size: 12px; font-weight: 600;">Google Drive Beats Ordnerpfad:</label>
+      <input type="text" id="gdrive-path-input" class="form-input" placeholder="G:\Meine Ablage\Beats">
+
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <label style="font-size: 12px; font-weight: 600;">Hugging Face Token (Live-Bildgenerierung · FLUX.1-schnell):</label>
+        <a href="https://huggingface.co/settings/tokens" target="_blank" style="font-size: 11px; color: #38bdf8; text-decoration: none;">Kostenlosen Token holen &rarr;</a>
+      </div>
+      <input type="password" id="hf-key-input" class="form-input" placeholder="hf_...">
+
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <label style="font-size: 12px; font-weight: 600;">Google Gemini API Key (für KI-Titel & Beschreibungen):</label>
+        <a href="https://aistudio.google.com/apikey" target="_blank" style="font-size: 11px; color: #38bdf8; text-decoration: none;">Kostenlosen Key holen &rarr;</a>
+      </div>
+      <input type="password" id="gemini-key-input" class="form-input" placeholder="AIzaSy...">
+
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <button class="btn" onclick="syncAllToDrive()">☁️ Alle synchronisieren</button>
+        <button class="btn btn-todo" onclick="saveDriveSettings()">Speichern</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- METADATA MODAL -->
+  <div id="meta-modal" class="modal-overlay" onclick="closeMetaModal()">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 id="meta-title" style="font-size: 15px;">YouTube & Instagram Texte</h3>
+        <div style="display: flex; gap: 6px; align-items: center;">
+          <button class="btn btn-muted" id="regen-meta-btn" onclick="regenerateCurrentMetadata()" title="Audio (BPM & Key) neu analysieren & neue KI-Titel generieren">↻ Neu generieren</button>
+          <button class="btn btn-muted" onclick="closeMetaModal()">&times;</button>
+        </div>
+      </div>
+      <pre id="meta-content"></pre>
+      <div style="display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+        <div style="display: flex; gap: 6px;">
+          <a class="btn" href="https://studio.youtube.com/channel/upload" target="_blank">YouTube Studio &rarr;</a>
+          <a class="btn" href="https://www.instagram.com/" target="_blank">Instagram &rarr;</a>
+        </div>
+        <div style="display: flex; gap: 6px;">
+          <button class="btn" onclick="copyReelCaptionOnly()">IG Reel / Short Caption</button>
+          <button class="btn btn-todo" onclick="copyMetaContent()">Texte kopieren</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- THUMBNAIL GENERATOR MODAL -->
+  <div id="thumb-modal" class="modal-overlay" onclick="closeThumbModal()">
+    <div class="modal" style="max-width: 820px;" onclick="event.stopPropagation()">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 id="thumb-modal-title" style="font-size: 15px;">YouTube Thumbnail</h3>
+        <button class="btn btn-muted" onclick="closeThumbModal()">&times;</button>
+      </div>
+      <p style="font-size: 12px; color: #71717a; line-height: 1.5; margin-top: 6px;">
+        KI-Bild im Vibe des Artists (anonym, keine echten Promis) · Hochformat mittig auf Schwarz · 1280×720 · Vorschau wie im YouTube-Feed.
+      </p>
+      <div class="artist-chips" id="thumb-artist-chips"></div>
+      <div class="thumb-gen-row">
+        <input type="text" id="thumb-artist-input" class="form-input" placeholder="z. B. Future x Drake">
+        <button class="btn btn-todo" id="thumb-gen-btn" onclick="generateThumbnails()">4 Thumbnails generieren</button>
+      </div>
+      <div class="thumb-status" id="thumb-status"></div>
+      <div class="thumb-grid" id="thumb-grid"></div>
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
+        <button class="btn" onclick="openExplorerFolder(activeThumbProject)">Im Explorer zeigen</button>
+        <a class="btn btn-todo" id="thumb-download" href="#" download>Ausgewähltes speichern</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let thumbPollTimer = null;
+    let activeThumbProject = null;
+    let projects = [];
+    let config = { gdrive_path: "", gemini_api_key: "", hf_api_key: "" };
+    let pollTimer = null;
+    let activeVideoModalProject = null;
+    let activeMetaProject = null;
+    let lastActiveProjectsSet = new Set();
+    let geminiClickedSet = new Set();
+
+    function openUploadModal() {
+      document.getElementById('upload-modal').classList.add('active');
+    }
+    function closeUploadModal() {
+      document.getElementById('upload-modal').classList.remove('active');
+    }
+    function openInfoModal() {
+      document.getElementById('info-modal').classList.add('active');
+    }
+    function closeInfoModal() {
+      document.getElementById('info-modal').classList.remove('active');
+    }
+
+    // Drag and drop for MP3 zone
+    const dropZone = document.getElementById('mp3-drop-zone');
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); });
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        handleMp3Selected(e.dataTransfer.files[0]);
+      }
+    });
+
+    function triggerMp3Picker() {
+      document.getElementById('mp3-input').click();
+    }
+
+    async function handleMp3Selected(file) {
+      if (!file) return;
+      const titleEl = document.getElementById('upload-title-text');
+      const origText = titleEl.innerText;
+      titleEl.innerText = `Analysiere Audio (BPM & Key), erstelle Lithen Night-Cam Artwork & KI-Texte...`;
+      showToast(`Analysiere Beat & erstelle Projekt...`);
+      try {
+        const res = await fetch(`/api/upload_mp3?name=${encodeURIComponent(file.name)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/octet-stream' },
+          body: file
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`Beat "${data.project}" analysiert & bereit`);
+          closeUploadModal();
+          await loadProjects();
+        } else {
+          alert(data.error || 'Fehler beim Upload');
+        }
+      } catch (err) {
+        alert('Serverfehler: ' + err);
+      } finally {
+        titleEl.innerText = origText;
+      }
+    }
+
+    async function loadConfig() {
+      try {
+        const res = await fetch('/api/config');
+        config = await res.json();
+        document.getElementById('gdrive-path-input').value = config.gdrive_path || '';
+        document.getElementById('hf-key-input').value = config.hf_api_key || '';
+        document.getElementById('gemini-key-input').value = config.gemini_api_key || '';
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function loadProjects() {
+      try {
+        const res = await fetch('/api/projects');
+        projects = await res.json();
+        renderProjects();
+        checkAndStartPolling();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    let openDropdownProject = null;
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.step-dropdown')) {
+        openDropdownProject = null;
+        document.querySelectorAll('.step-dropdown.open').forEach(el => el.classList.remove('open'));
+      }
+    });
+
+    function toggleStepDropdown(e, name) {
+      e.stopPropagation();
+      const dd = document.getElementById(`dd-${name}`);
+      if (!dd) return;
+      const isOpen = dd.classList.contains('open');
+      document.querySelectorAll('.step-dropdown.open').forEach(el => el.classList.remove('open'));
+      if (!isOpen) {
+        dd.classList.add('open');
+        openDropdownProject = name;
+      } else {
+        openDropdownProject = null;
+      }
+    }
+
+    function closeStepDropdown() {
+      openDropdownProject = null;
+      document.querySelectorAll('.step-dropdown.open').forEach(el => el.classList.remove('open'));
+    }
+
+    function renderProjects() {
+      const container = document.getElementById('project-list');
+      if (projects.length === 0) {
+        container.innerHTML = '<div style="text-align: center; color: #52525b; padding: 40px;">Keine offenen Beats in der Pipeline.</div>';
+        return;
+      }
+
+      const ts = Date.now();
+      container.innerHTML = projects.map(p => {
+        const job = p.render_job;
+        const isRendering = !!(job && job.active);
+        const anyVideoReady = !!(p.has_final_video || p.has_short_video);
+        const bothVideosReady = !!(p.has_final_video && p.has_short_video);
+
+        const todoGemini = !isRendering && !p.has_video_loop && !anyVideoReady && !geminiClickedSet.has(p.name);
+        const todoLoop = !isRendering && !p.has_video_loop && !anyVideoReady && geminiClickedSet.has(p.name);
+        const todoRenderMain = !isRendering && p.has_video_loop && !p.has_final_video;
+        const todoRenderShort = !isRendering && p.has_final_video && !p.has_short_video;
+        const todoTexte = !isRendering && bothVideosReady;
+
+        const canUploadLoop = !isRendering;
+        const canUseMainVideo = !isRendering && (p.has_video_loop || p.has_final_video);
+        const canUseShortVideo = !isRendering && (p.has_video_loop || p.has_final_video || p.has_short_video);
+        const canUseTexte = !isRendering && anyVideoReady;
+
+        let ddLabel = 'Steps';
+        if (isRendering) ddLabel = 'Rendert...';
+        else if (todoGemini) ddLabel = 'Gemini öffnen';
+        else if (todoLoop) ddLabel = 'Loop laden';
+        else if (todoRenderMain) ddLabel = '1440p Video';
+        else if (todoRenderShort) ddLabel = 'Short / Reel';
+        else if (todoTexte) ddLabel = 'Videos & Texte';
+
+        const isDdOpen = openDropdownProject === p.name;
+
+        return `
+        <div class="project-card" id="card-${p.name}">
+          <!-- LEFT: ARTWORK -->
+          <div class="thumb-wrap">
+            ${p.has_artwork 
+              ? `<img class="artwork-thumb" id="thumb-${p.name}" src="/projects/${p.name}/artwork.jpg?t=${ts}" alt="${p.name}">`
+              : `<div class="artwork-thumb"></div>`
+            }
+            <div class="thumb-overlay-actions">
+              <button class="btn-thumb" id="regen-btn-${p.name}" onclick="regenerateArtwork('${p.name}')" title="Neues Unique Lithen Green-Night Artwork generieren">
+                🎨 Bild wechseln
+              </button>
+              <button class="btn-thumb" onclick="openThumbModal('${p.name}')" title="Klick-starke YouTube Thumbnails generieren">
+                🖼️ Thumbnail
+              </button>
+            </div>
+          </div>
+
+          <!-- RIGHT: INFO, LIVE PROGRESS & GUIDED CONTROLS -->
+          <div class="card-info">
+            <div class="card-top">
+              <div class="card-title-group">
+                <div class="card-title">${p.name.toUpperCase()}</div>
+                <div class="card-badges">
+                  ${p.bpm && p.key ? `<span class="badge">${p.bpm} BPM · ${p.key}</span>` : ''}
+                  ${p.is_backed_up ? '<span class="badge badge-cloud">☁️ Gesichert</span>' : ''}
+                  ${isRendering ? '<span class="badge badge-active">Rendert...</span>' : ''}
+                </div>
+              </div>
+
+              <div class="util-buttons">
+                <!-- GUIDED PROCESS STEPS DROPDOWN -->
+                <div class="step-dropdown ${isDdOpen ? 'open' : ''}" id="dd-${p.name}">
+                  <button class="btn step-dropdown-toggle" onclick="toggleStepDropdown(event, '${p.name}')">
+                    <span>${ddLabel}</span>
+                    <span class="step-dropdown-chevron">▾</span>
+                  </button>
+                  <div class="step-dropdown-menu" onclick="event.stopPropagation()">
+                    <!-- Gemini öffnen -->
+                    <button class="btn ${todoGemini ? 'btn-todo' : ''}" onclick="closeStepDropdown(); openGemini('${p.name}')" ${isRendering ? 'disabled' : ''}>
+                      Gemini öffnen
+                    </button>
+
+                    <!-- Loop laden -->
+                    <button class="btn ${todoLoop ? 'btn-todo' : ''}" onclick="closeStepDropdown(); triggerVideoUpload('${p.name}')" ${!canUploadLoop ? 'disabled' : ''}>
+                      Loop laden
+                    </button>
+
+                    <!-- 1440p YouTube Hauptvideo -->
+                    ${p.has_final_video ? `
+                      <button class="btn btn-ready" onclick="closeStepDropdown(); openVideoModal('${p.name}', 'main')" ${isRendering ? 'disabled' : ''}>
+                        ▶ 1440p Video
+                      </button>
+                    ` : `
+                      <button class="btn ${todoRenderMain ? 'btn-todo' : ''}" onclick="closeStepDropdown(); renderVideo('${p.name}', 'both')" ${!canUseMainVideo ? 'disabled' : ''}>
+                        1440p Video
+                      </button>
+                    `}
+
+                    <!-- 9:16 Short / Reel -->
+                    ${p.has_short_video ? `
+                      <button class="btn btn-ready" onclick="closeStepDropdown(); openVideoModal('${p.name}', 'short')" ${isRendering ? 'disabled' : ''}>
+                        ▶ Short / Reel
+                      </button>
+                    ` : `
+                      <button class="btn ${todoRenderShort ? 'btn-todo' : ''}" onclick="closeStepDropdown(); renderVideo('${p.name}', 'short_only')" ${!canUseShortVideo ? 'disabled' : ''}>
+                        Short / Reel
+                      </button>
+                    `}
+
+                    <!-- YouTube & IG Texte -->
+                    <button class="btn ${todoTexte ? 'btn-todo' : ''}" onclick="closeStepDropdown(); showMetadata('${p.name}')" ${!canUseTexte ? 'disabled' : ''}>
+                      Texte
+                    </button>
+
+                    <!-- YouTube Thumbnail -->
+                    <button class="btn ${p.has_thumbnail ? 'btn-ready' : ''}" onclick="closeStepDropdown(); openThumbModal('${p.name}')">
+                      ${p.has_thumbnail ? '▶ Thumbnail' : 'Thumbnail'}
+                    </button>
+                  </div>
+                </div>
+                <input type="file" id="vid-input-${p.name}" accept="video/mp4" style="display: none;" onchange="handleVideoSelected('${p.name}', this.files[0])">
+
+                <button class="btn btn-muted" onclick="openExplorerFolder('${p.name}')" title="Projektordner öffnen" aria-label="Projektordner öffnen">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                </button>
+                ${anyVideoReady ? `
+                  <button class="btn btn-check-done" onclick="completeProject('${p.name}')" title="Beat abschließen & aus Liste ausblenden (bleibt in Google Drive gesichert)">
+                    ✓
+                  </button>
+                ` : ''}
+                <button class="btn btn-danger" onclick="deleteProject('${p.name}')" title="Aus UI entfernen">
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <!-- LIVE RENDER MONITOR (ONLY VISIBLE WHILE RENDERING) -->
+            <div class="render-monitor ${isRendering ? 'visible' : ''}" id="monitor-${p.name}">
+              <div class="rm-header">
+                <div class="rm-stage">
+                  <span class="rm-spinner" id="rm-spin-${p.name}"></span>
+                  <span id="rm-label-${p.name}">${job ? job.stage_label : 'Rendere...'}</span>
+                </div>
+                <div class="rm-meta" id="rm-pct-${p.name}">${job ? job.percent : 0}%</div>
+              </div>
+              <div class="rm-bar-track">
+                <div class="rm-bar-fill" id="rm-bar-${p.name}" style="width: ${job ? job.percent : 0}%;"></div>
+              </div>
+              <div class="rm-substeps">
+                <div class="rm-subpills">
+                  <span>1440p Video: <strong id="rm-main-pct-${p.name}">${job ? (job.main_percent || 0) : 0}%</strong></span>
+                  <span>Short / Reel: <strong id="rm-short-pct-${p.name}">${job ? (job.short_percent || 0) : 0}%</strong></span>
+                </div>
+                <div id="rm-stats-${p.name}">
+                  ${job ? job.current_time_str : '00:00'} · ${job ? job.speed : '-'} · ${job ? job.eta_str : '-'}
+                </div>
+              </div>
+            </div>
+
+            ${p.has_mp3 ? `
+              <div class="audio-player" id="aud-wrap-${p.name}">
+                <button class="aud-play-btn" id="aud-btn-${p.name}" onclick="toggleAudio('${p.name}')" title="Abspielen / Pause">▶</button>
+                <div class="aud-track-wrap" onclick="seekAudio(event, '${p.name}')">
+                  <div class="aud-track">
+                    <div class="aud-fill" id="aud-fill-${p.name}"></div>
+                  </div>
+                </div>
+                <div class="aud-time" id="aud-time-${p.name}">0:00 / ${p.duration_str || '--:--'}</div>
+                <audio id="aud-${p.name}" preload="none" src="/projects/${p.name}/beat.mp3"
+                  onloadedmetadata="onAudioMeta('${p.name}')"
+                  ontimeupdate="onAudioTime('${p.name}')"
+                  onended="onAudioEnded('${p.name}')"></audio>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+        `;
+      }).join('');
+    }
+
+    function fmtAudioSec(sec) {
+      if (!sec || isNaN(sec)) return '0:00';
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return `${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+
+    function onAudioMeta(name) {
+      const aud = document.getElementById(`aud-${name}`);
+      const timeEl = document.getElementById(`aud-time-${name}`);
+      if (aud && timeEl) {
+        timeEl.innerText = `0:00 / ${fmtAudioSec(aud.duration)}`;
+      }
+    }
+
+    function onAudioTime(name) {
+      const aud = document.getElementById(`aud-${name}`);
+      const fillEl = document.getElementById(`aud-fill-${name}`);
+      const timeEl = document.getElementById(`aud-time-${name}`);
+      if (aud && fillEl && timeEl && aud.duration) {
+        const pct = Math.min(100, Math.max(0, (aud.currentTime / aud.duration) * 100));
+        fillEl.style.width = `${pct}%`;
+        timeEl.innerText = `${fmtAudioSec(aud.currentTime)} / ${fmtAudioSec(aud.duration)}`;
+      }
+    }
+
+    function onAudioEnded(name) {
+      const wrap = document.getElementById(`aud-wrap-${name}`);
+      const btn = document.getElementById(`aud-btn-${name}`);
+      const fillEl = document.getElementById(`aud-fill-${name}`);
+      if (wrap) wrap.classList.remove('playing');
+      if (btn) btn.innerText = '▶';
+      if (fillEl) fillEl.style.width = '0%';
+    }
+
+    function toggleAudio(name) {
+      const targetAud = document.getElementById(`aud-${name}`);
+      if (!targetAud) return;
+
+      // Pause all other beat players first
+      document.querySelectorAll('audio[id^="aud-"]').forEach(a => {
+        if (a.id !== `aud-${name}` && !a.paused) {
+          a.pause();
+          const otherName = a.id.replace('aud-', '');
+          const w = document.getElementById(`aud-wrap-${otherName}`);
+          const b = document.getElementById(`aud-btn-${otherName}`);
+          if (w) w.classList.remove('playing');
+          if (b) b.innerText = '▶';
+        }
+      });
+
+      const wrap = document.getElementById(`aud-wrap-${name}`);
+      const btn = document.getElementById(`aud-btn-${name}`);
+
+      if (targetAud.paused) {
+        targetAud.play().catch(() => {});
+        if (wrap) wrap.classList.add('playing');
+        if (btn) btn.innerText = '❚❚';
+      } else {
+        targetAud.pause();
+        if (wrap) wrap.classList.remove('playing');
+        if (btn) btn.innerText = '▶';
+      }
+    }
+
+    function seekAudio(e, name) {
+      const aud = document.getElementById(`aud-${name}`);
+      if (!aud || !aud.duration) return;
+      const rect = e.currentTarget.getBoundingClientRect();
+      const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+      aud.currentTime = ratio * aud.duration;
+      onAudioTime(name);
+    }
+
+    function checkAndStartPolling() {
+      const activeNames = projects.filter(p => p.render_job && p.render_job.active).map(p => p.name);
+      activeNames.forEach(n => lastActiveProjectsSet.add(n));
+      if (activeNames.length > 0 && !pollTimer) {
+        pollTimer = setInterval(pollRenderStatus, 450);
+      }
+    }
+
+    async function pollRenderStatus() {
+      try {
+        const res = await fetch('/api/render_status');
+        const data = await res.json();
+        const jobs = data.jobs || {};
+
+        let someoneFinished = false;
+
+        for (const [projName, job] of Object.entries(jobs)) {
+          if (job.active) {
+            updateJobDOM(projName, job);
+            lastActiveProjectsSet.add(projName);
+          } else if (lastActiveProjectsSet.has(projName)) {
+            lastActiveProjectsSet.delete(projName);
+            someoneFinished = true;
+          }
+        }
+
+        if (someoneFinished) {
+          showToast('Videos fertig gerendert');
+          await loadProjects();
+        }
+
+        if (!data.active_any && lastActiveProjectsSet.size === 0) {
+          clearInterval(pollTimer);
+          pollTimer = null;
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function updateJobDOM(name, job) {
+      const monitor = document.getElementById(`monitor-${name}`);
+      if (!monitor) return;
+
+      monitor.classList.toggle('visible', !!job.active);
+
+      const lbl = document.getElementById(`rm-label-${name}`);
+      if (lbl) lbl.innerText = job.stage_label || '';
+
+      const pct = document.getElementById(`rm-pct-${name}`);
+      if (pct) pct.innerText = `${job.percent || 0}%`;
+
+      const bar = document.getElementById(`rm-bar-${name}`);
+      if (bar) bar.style.width = `${job.percent || 0}%`;
+
+      const mainPct = document.getElementById(`rm-main-pct-${name}`);
+      if (mainPct) mainPct.innerText = `${job.main_percent || 0}%`;
+
+      const shortPct = document.getElementById(`rm-short-pct-${name}`);
+      if (shortPct) shortPct.innerText = `${job.short_percent || 0}%`;
+
+      const stats = document.getElementById(`rm-stats-${name}`);
+      if (stats) {
+        stats.innerText = `${job.current_time_str || '00:00'} · ${job.speed || '-'} · ${job.eta_str || '-'}`;
+      }
+    }
+
+    async function completeProject(name) {
+      const card = document.getElementById(`card-${name}`);
+      if (card) card.classList.add('completing');
+      try {
+        const res = await fetch('/api/complete_project', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ project: name })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('Abgeschlossen & in Google Drive gesichert ✓');
+          setTimeout(() => loadProjects(), 200);
+        }
+      } catch (e) {
+        alert(e);
+      }
+    }
+
+    async function regenerateArtwork(name) {
+      const btn = document.getElementById(`regen-btn-${name}`);
+      if (btn) {
+        btn.disabled = true;
+        btn.innerText = 'Generiert...';
+      }
+      showToast('Generiere neues Lithen Green-Night Artwork...');
+      try {
+        const res = await fetch('/api/regenerate_artwork', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ project: name })
+        });
+        const data = await res.json();
+        if (data.success) {
+          const thumbEl = document.getElementById(`thumb-${name}`);
+          if (thumbEl) {
+            thumbEl.src = `/projects/${name}/artwork.jpg?t=${Date.now()}`;
+          }
+          const proj = projects.find(x => x.name === name);
+          if (proj && data.prompt_text) {
+            proj.prompt_text = data.prompt_text;
+          }
+          showToast('Neues Lithen Night-Cam Artwork gespeichert');
+        }
+      } catch (e) {
+        alert(e);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerText = '🎨 Bild wechseln';
+        }
+      }
+    }
+
+    // ---------------- YOUTUBE THUMBNAIL GENERATOR ----------------
+    let thumbState = null;
+
+    function escHtml(s) {
+      return String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    async function openThumbModal(name) {
+      activeThumbProject = name;
+      document.getElementById('thumb-modal-title').innerText = `YouTube Thumbnail · ${name.toUpperCase()}`;
+      document.getElementById('thumb-grid').innerHTML = '';
+      document.getElementById('thumb-status').innerText = 'Lade ...';
+      document.getElementById('thumb-artist-input').value = '';
+      document.getElementById('thumb-modal').classList.add('active');
+      await refreshThumbState(true);
+    }
+
+    function closeThumbModal() {
+      document.getElementById('thumb-modal').classList.remove('active');
+      activeThumbProject = null;
+      if (thumbPollTimer) { clearTimeout(thumbPollTimer); thumbPollTimer = null; }
+    }
+
+    async function refreshThumbState(initial = false) {
+      const name = activeThumbProject;
+      if (!name) return;
+      try {
+        const res = await fetch(`/api/thumbnails?project=${encodeURIComponent(name)}`);
+        const st = await res.json();
+        if (name !== activeThumbProject) return;
+        thumbState = st;
+
+        if (initial) {
+          const input = document.getElementById('thumb-artist-input');
+          input.value = st.default_artist || '';
+          document.getElementById('thumb-artist-chips').innerHTML = (st.artists || []).map(a =>
+            `<span class="artist-chip" data-artist="${escHtml(a)}" onclick="document.getElementById('thumb-artist-input').value=this.dataset.artist">${escHtml(a)}</span>`
+          ).join('');
+        }
+        renderThumbGrid();
+
+        const job = st.job;
+        const active = !!(job && job.active);
+        const btn = document.getElementById('thumb-gen-btn');
+        btn.disabled = active;
+        btn.innerText = active ? 'Generiert ...' : '4 Thumbnails generieren';
+        let status = '';
+        if (active) status = `⏳ ${job.label} (${job.done}/${job.total} fertig)`;
+        else if (job && job.label) status = job.label + (job.failed ? ` · ${job.failed} fehlgeschlagen` : '');
+        else if (!(st.variants || []).length) status = 'Noch keine Thumbnails – Artist prüfen und auf "generieren" klicken.';
+        else status = 'Klicke auf ein Thumbnail, um es als Video-Thumbnail auszuwählen.';
+        document.getElementById('thumb-status').innerText = status;
+
+        if (active) {
+          thumbPollTimer = setTimeout(() => refreshThumbState(false), 1500);
+        } else {
+          const p = projects.find(x => x.name === name);
+          if (p) p.has_thumbnail = !!st.has_selected;
+        }
+      } catch (e) {
+        document.getElementById('thumb-status').innerText = 'Fehler: ' + e;
+      }
+    }
+
+    function renderThumbGrid() {
+      const st = thumbState;
+      const name = activeThumbProject;
+      if (!st || !name) return;
+      const p = projects.find(x => x.name === name) || {};
+      const title = (st.titles && st.titles[0]) ? st.titles[0] : `${(st.default_artist || 'Type')} Type Beat - "${name.toUpperCase()}"`;
+      const dur = p.duration_str && p.duration_str !== '--:--' ? p.duration_str : '';
+      const job = st.job;
+      const pending = job && job.active ? Math.max(0, job.total - job.done - job.failed) : 0;
+
+      const cards = (st.variants || []).map(v => {
+        const sel = st.selected_src === v;
+        return `
+          <div class="yt-card ${sel ? 'selected' : ''}" onclick="selectThumbnail('${v}')">
+            <div class="yt-img-wrap">
+              <img src="/projects/${name}/${v}" alt="Thumbnail" loading="lazy">
+              <span class="yt-sel">✓ AUSGEWÄHLT</span>
+              ${dur ? `<span class="yt-dur">${dur}</span>` : ''}
+            </div>
+            <div class="yt-title">${escHtml(title)}</div>
+            <div class="yt-sub">prodbyJMD · Vorschau im YouTube-Feed</div>
+          </div>`;
+      });
+      const placeholders = Array.from({ length: pending }, () => `
+          <div class="yt-card placeholder">
+            <div class="yt-img-wrap"></div>
+            <div class="yt-title" style="color:#52525b;">Wird generiert ...</div>
+          </div>`);
+      document.getElementById('thumb-grid').innerHTML = placeholders.concat(cards).join('');
+
+      const dl = document.getElementById('thumb-download');
+      if (st.has_selected) {
+        dl.href = `/projects/${name}/thumbnail.jpg?t=${Date.now()}`;
+        dl.setAttribute('download', `${name}_thumbnail.jpg`);
+        dl.style.pointerEvents = '';
+        dl.style.opacity = '';
+      } else {
+        dl.href = '#';
+        dl.style.pointerEvents = 'none';
+        dl.style.opacity = '0.4';
+      }
+    }
+
+    async function generateThumbnails() {
+      const name = activeThumbProject;
+      if (!name) return;
+      const artist = document.getElementById('thumb-artist-input').value.trim();
+      try {
+        const res = await fetch('/api/generate_thumbnails', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ project: name, artist, count: 4 })
+        });
+        const data = await res.json();
+        if (!data.success) { alert(data.error || 'Fehler'); return; }
+        showToast('Thumbnails werden generiert ...');
+        if (thumbPollTimer) clearTimeout(thumbPollTimer);
+        refreshThumbState(false);
+      } catch (e) {
+        alert(e);
+      }
+    }
+
+    async function selectThumbnail(file) {
+      const name = activeThumbProject;
+      if (!name) return;
+      try {
+        const res = await fetch('/api/select_thumbnail', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ project: name, file })
+        });
+        const data = await res.json();
+        if (data.success) {
+          thumbState.selected_src = file;
+          thumbState.has_selected = true;
+          const p = projects.find(x => x.name === name);
+          if (p && !p.has_thumbnail) { p.has_thumbnail = true; renderProjects(); }
+          renderThumbGrid();
+          showToast('Thumbnail ausgewählt (thumbnail.jpg)');
+        }
+      } catch (e) {
+        alert(e);
+      }
+    }
+
+    async function openGemini(name) {
+      const p = projects.find(x => x.name === name);
+      geminiClickedSet.add(name);
+      renderProjects();
+      if (p && p.prompt_text) {
+        try {
+          await navigator.clipboard.writeText(p.prompt_text);
+        } catch (e) {
+          console.error(e);
+        }
+        window.open('https://gemini.google.com/app', '_blank');
+        showToast('Prompt kopiert & Gemini geöffnet');
+      }
+    }
+
+    function triggerVideoUpload(name) {
+      document.getElementById(`vid-input-${name}`).click();
+    }
+
+    async function handleVideoSelected(name, file) {
+      if (!file) return;
+      showToast(`Starte Render-Pipeline (1440p + Short/Reel)...`);
+      try {
+        const res = await fetch(`/api/upload_video?project=${encodeURIComponent(name)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/octet-stream' },
+          body: file
+        });
+        const data = await res.json();
+        if (data.success) {
+          lastActiveProjectsSet.add(name);
+          await loadProjects();
+          if (!pollTimer) pollTimer = setInterval(pollRenderStatus, 450);
+        } else {
+          alert(data.error || 'Fehler');
+        }
+      } catch (err) {
+        alert('Serverfehler: ' + err);
+      }
+    }
+
+    async function renderVideo(name, mode = 'both', shortStart = 12, shortDur = 30) {
+      showToast(mode === 'short_only' ? 'Rendere 9:16 Short / Reel...' : 'Rendere 1440p Video + Short / Reel...');
+      try {
+        const res = await fetch('/api/render', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            project: name,
+            mode: mode,
+            short_start: shortStart,
+            short_duration: shortDur
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          lastActiveProjectsSet.add(name);
+          await loadProjects();
+          if (!pollTimer) pollTimer = setInterval(pollRenderStatus, 450);
+        } else {
+          alert(data.error || 'Fehler');
+        }
+      } catch (err) {
+        alert(err);
+      }
+    }
+
+    function openVideoModal(name, type) {
+      activeVideoModalProject = name;
+      const modal = document.getElementById('video-modal');
+      const player = document.getElementById('video-modal-player');
+      const title = document.getElementById('video-modal-title');
+      const dl = document.getElementById('video-modal-download');
+      const shortPanel = document.getElementById('short-settings-panel');
+      const folderBtn = document.getElementById('video-modal-folder-btn');
+
+      const ts = Date.now();
+      if (type === 'short') {
+        const url = `/projects/${name}/short_reel_video.mp4?t=${ts}`;
+        title.innerText = `${name.toUpperCase()} — 9:16 Short & Instagram Reel`;
+        player.src = url;
+        player.style.aspectRatio = '9/16';
+        dl.href = `/projects/${name}/short_reel_video.mp4`;
+        dl.download = `${name}_short_reel_prodbyJMD.mp4`;
+        shortPanel.style.display = 'block';
+      } else {
+        const url = `/projects/${name}/final_youtube_video.mp4?t=${ts}`;
+        title.innerText = `${name.toUpperCase()} — 1440p YouTube Video`;
+        player.src = url;
+        player.style.aspectRatio = '16/9';
+        dl.href = `/projects/${name}/final_youtube_video.mp4`;
+        dl.download = `${name}_youtube_1440p_prodbyJMD.mp4`;
+        shortPanel.style.display = 'none';
+      }
+
+      folderBtn.onclick = () => openExplorerFolder(name);
+      modal.classList.add('active');
+      player.play().catch(() => {});
+    }
+
+    function closeVideoModal() {
+      const modal = document.getElementById('video-modal');
+      const player = document.getElementById('video-modal-player');
+      player.pause();
+      player.src = '';
+      modal.classList.remove('active');
+    }
+
+    async function reRenderCustomShort() {
+      if (!activeVideoModalProject) return;
+      const st = parseFloat(document.getElementById('short-start-select').value || '12');
+      const dur = parseFloat(document.getElementById('short-dur-select').value || '30');
+      const proj = activeVideoModalProject;
+      closeVideoModal();
+      await renderVideo(proj, 'short_only', st, dur);
+    }
+
+    function showMetadata(name) {
+      activeMetaProject = name;
+      const p = projects.find(x => x.name === name);
+      if (p && p.metadata_text) {
+        const bpmInfo = (p.bpm && p.key) ? ` (${p.bpm} BPM · ${p.key})` : '';
+        document.getElementById('meta-title').innerText = `${p.name.toUpperCase()}${bpmInfo} — YouTube & IG Texte`;
+        document.getElementById('meta-content').innerText = p.metadata_text;
+        document.getElementById('meta-modal').classList.add('active');
+      }
+    }
+
+    async function regenerateCurrentMetadata() {
+      if (!activeMetaProject) return;
+      const btn = document.getElementById('regen-meta-btn');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerText = 'Analysiere...';
+      }
+      showToast('Analysiere Audio (BPM & Key) & erstelle neue KI-Texte...');
+      try {
+        const res = await fetch('/api/regenerate_metadata', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ project: activeMetaProject })
+        });
+        const data = await res.json();
+        if (data.success && data.metadata_text) {
+          document.getElementById('meta-content').innerText = data.metadata_text;
+          await loadProjects();
+          showToast('Neue Texte & Audio-Analyse gespeichert');
+        }
+      } catch (e) {
+        alert(e);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerText = '↻ Neu generieren';
+        }
+      }
+    }
+
+    function closeMetaModal() {
+      document.getElementById('meta-modal').classList.remove('active');
+    }
+
+    function copyMetaContent() {
+      const content = document.getElementById('meta-content').innerText;
+      navigator.clipboard.writeText(content);
+      showToast('Texte kopiert');
+    }
+
+    function copyReelCaptionOnly() {
+      const content = document.getElementById('meta-content').innerText || '';
+      const parts = content.split('## 📱 Instagram Reel');
+      if (parts.length > 1) {
+        const blockMatch = parts[1].match(/```(?:text)?\s*([\s\S]*?)```/);
+        if (blockMatch && blockMatch[1]) {
+          navigator.clipboard.writeText(blockMatch[1].trim());
+          showToast('IG Reel / Short Caption kopiert');
+          return;
+        }
+      }
+      navigator.clipboard.writeText(content);
+      showToast('IG Reel / Short Caption kopiert');
+    }
+
+    async function openExplorerFolder(name) {
+      await fetch('/api/open_folder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ project: name })
+      });
+    }
+
+    function openDriveSettings() {
+      document.getElementById('drive-modal').classList.add('active');
+    }
+
+    function closeDriveModal() {
+      document.getElementById('drive-modal').classList.remove('active');
+    }
+
+    async function saveDriveSettings() {
+      const pathVal = document.getElementById('gdrive-path-input').value;
+      const hfVal = document.getElementById('hf-key-input').value;
+      const keyVal = document.getElementById('gemini-key-input').value;
+      try {
+        await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ gdrive_path: pathVal, hf_api_key: hfVal, gemini_api_key: keyVal })
+        });
+        showToast('Einstellungen gespeichert');
+        closeDriveModal();
+        await loadProjects();
+      } catch (e) {
+        alert(e);
+      }
+    }
+
+    async function syncAllToDrive() {
+      showToast('Synchronisiere mit Google Drive...');
+      try {
+        const res = await fetch('/api/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('Alle Beats gesichert ☁️');
+          closeDriveModal();
+          await loadProjects();
+        } else {
+          alert('Fehler beim Synchronisieren');
+        }
+      } catch (e) {
+        alert(e);
+      }
+    }
+
+    async function deleteProject(name) {
+      if (!confirm(`Beat "${name}" aus der UI entfernen? (Bleibt auf Google Drive erhalten)`)) {
+        return;
+      }
+      try {
+        const res = await fetch('/api/delete_project', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ project: name })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('Entfernt');
+          await loadProjects();
+        }
+      } catch (e) {
+        alert(e);
+      }
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.innerText = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2400);
+    }
+
+    loadConfig();
+    loadProjects();
+  </script>
+</body>
+</html>

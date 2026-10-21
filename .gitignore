@@ -1,0 +1,22 @@
+# Secrets & local state
+config.json
+*.db
+*.db-journal
+.env
+
+# Media / user data
+projects/
+trash/
+artwork_pool/
+*.mp4
+*.mp3
+*.exe
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Frontend
+node_modules/
+frontend/dist/

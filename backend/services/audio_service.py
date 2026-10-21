@@ -34,10 +34,17 @@ def get_audio_duration(mp3_path: str) -> float:
 def analyze_beat_audio(p_dir: str, safe_name: str, force: bool = False) -> Dict[str, Any]:
     """Detects BPM, Musical Key (Tonart), Spectral Mood, and Bar-Accurate Timestamps from beat.mp3."""
     analysis_file = os.path.join(p_dir, "analysis.json")
-    if not force and os.path.exists(analysis_file):
+    manual_bpm = None
+    manual_key = None
+    if os.path.exists(analysis_file):
         try:
             with open(analysis_file, "r", encoding="utf-8") as f:
-                return json.load(f)
+                prev = json.load(f)
+                if not force:
+                    return prev
+                if prev.get("manual_override"):
+                    manual_bpm = prev.get("bpm")
+                    manual_key = prev.get("key")
         except Exception:
             pass
 
@@ -198,6 +205,11 @@ def analyze_beat_audio(p_dir: str, safe_name: str, force: bool = False) -> Dict[
         (format_mmss(max(int(duration * 0.86), t_outro)), "Outro"),
     ]
 
+    if manual_bpm is not None:
+        bpm = int(manual_bpm)
+    if manual_key is not None:
+        key_str = str(manual_key)
+
     result = {
         "bpm": bpm,
         "key": key_str,
@@ -212,6 +224,7 @@ def analyze_beat_audio(p_dir: str, safe_name: str, force: bool = False) -> Dict[
         "high_ratio": high_ratio,
         "crest": crest,
         "timestamps": timestamps,
+        "manual_override": bool(manual_bpm or manual_key),
     }
     try:
         with open(analysis_file, "w", encoding="utf-8") as f:

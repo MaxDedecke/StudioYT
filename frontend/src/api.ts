@@ -40,6 +40,21 @@ export async function completeProject(project: string): Promise<void> {
   if (!res.ok) throw new Error('Fehler beim Abschließen des Projekts');
 }
 
+export async function updateBeatAudio(
+  project: string,
+  bpm: number,
+  key: string,
+  sync_metadata = true
+): Promise<{ success: boolean; project: string; bpm: number; key: string; metadata_text?: string }> {
+  const res = await fetch(`${BASE_URL}/api/update_beat_audio`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ project, bpm, key, sync_metadata }),
+  });
+  if (!res.ok) throw new Error('Fehler beim Aktualisieren der Beat-Daten');
+  return res.json();
+}
+
 export async function deleteProject(project: string): Promise<void> {
   const res = await fetch(`${BASE_URL}/api/delete_project`, {
     method: 'POST',

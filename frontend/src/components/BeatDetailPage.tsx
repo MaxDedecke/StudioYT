@@ -19,6 +19,8 @@ import {
   Loader2,
   Copy,
   Save,
+  Edit3,
+  Music,
 } from 'lucide-react';
 import type { Project, ThumbnailState } from '../types';
 import {
@@ -32,6 +34,7 @@ import {
   generateThumbnails,
   selectThumbnail,
   openExplorerFolder,
+  updateBeatAudio,
 } from '../api';
 
 interface BeatDetailPageProps {
@@ -42,6 +45,11 @@ interface BeatDetailPageProps {
   onDelete: (name: string) => void;
   showToast: (msg: string) => void;
 }
+
+const COMMON_KEYS = [
+  "C Minor", "C# Minor", "D Minor", "D# Minor", "Eb Minor", "E Minor", "F Minor", "F# Minor", "G Minor", "G# Minor", "A Minor", "Bb Minor", "B Minor",
+  "C Major", "C# Major", "D Major", "Eb Major", "E Major", "F Major", "F# Major", "G Major", "Ab Major", "A Major", "Bb Major", "B Major"
+];
 
 export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
   project,
@@ -58,6 +66,39 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(project.duration_sec || 0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Audio Info / BPM & Key editing state
+  const [isEditingAudioInfo, setIsEditingAudioInfo] = useState(false);
+  const [editBpm, setEditBpm] = useState<number>(project.bpm || 140);
+  const [editKey, setEditKey] = useState<string>(project.key || 'C Minor');
+  const [syncMetaWithBpm, setSyncMetaWithBpm] = useState<boolean>(true);
+  const [isSavingAudioInfo, setIsSavingAudioInfo] = useState(false);
+
+  useEffect(() => {
+    setEditBpm(project.bpm || 140);
+    setEditKey(project.key || 'C Minor');
+    setMetadataText(project.metadata_text || '');
+  }, [project.name, project.bpm, project.key, project.metadata_text]);
+
+  const handleSaveAudioInfo = async () => {
+    setIsSavingAudioInfo(true);
+    try {
+      const res = await updateBeatAudio(project.name, editBpm, editKey, syncMetaWithBpm);
+      project.bpm = res.bpm;
+      project.key = res.key;
+      if (res.metadata_text) {
+        project.metadata_text = res.metadata_text;
+        setMetadataText(res.metadata_text);
+      }
+      showToast(`Tempo (${res.bpm} BPM) & Tonart (${res.key}) gespeichert!`);
+      setIsEditingAudioInfo(false);
+      onRefresh();
+    } catch (e: any) {
+      alert(e.message || 'Fehler beim Speichern');
+    } finally {
+      setIsSavingAudioInfo(false);
+    }
+  };
 
   // Artwork & Video Upload
   const loopInputRef = useRef<HTMLInputElement | null>(null);
@@ -387,11 +428,17 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
               <h1 className="text-2xl font-black tracking-wide text-white uppercase">
                 {project.name}
               </h1>
-              {project.bpm && project.key && (
-                <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/30">
-                  {project.bpm} BPM · {project.key}
-                </span>
-              )}
+
+              {/* Editable BPM & Key Badge */}
+              <button
+                onClick={() => setIsEditingAudioInfo(!isEditingAudioInfo)}
+                title="BPM & Tonart (Key) bearbeiten"
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 text-purple-300 hover:text-white text-xs font-bold transition-all shadow-sm group/btn"
+              >
+                <span>{project.bpm || 140} BPM · {project.key || 'C Minor'}</span>
+                <Edit3 className="w-3.5 h-3.5 text-purple-400 group-hover/btn:text-white transition-colors" />
+              </button>
+
               {project.is_backed_up ? (
                 <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 flex items-center gap-1">
                   <Cloud className="w-3.5 h-3.5" />
@@ -405,6 +452,157 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
                 </span>
               )}
             </div>
+
+            {/* Inline BPM & Key Editor Popover */}
+            {isEditingAudioInfo && (
+              <div className="mt-3.5 bg-[#090a12] border border-purple-500/40 rounded-xl p-4 shadow-2xl flex flex-col gap-3.5 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between border-b border-white/[0.08] pb-2">
+                  <div className="flex items-center gap-2 text-xs font-bold text-white">
+                    <Music className="w-4 h-4 text-purple-400" />
+                    <span>Tempo (BPM) & Tonart (Key) manuell korrigieren</span>
+                  </div>
+                  <button
+                    onClick={() => setIsEditingAudioInfo(false)}
+                    className="text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-white/[0.06]"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  {/* BPM Field */}
+                  <div>
+                    <label className="text-[11px] font-bold text-zinc-400 block mb-1">
+                      Tempo (BPM)
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setEditBpm(Math.max(40, editBpm - 1))}
+                        className="w-8 h-9 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 font-bold text-sm flex items-center justify-center"
+                      >
+                        -
+                      </button>
+                      <input
+                        type="number"
+                        min="40"
+                        max="240"
+                        value={editBpm}
+                        onChange={(e) => setEditBpm(parseInt(e.target.value) || 140)}
+                        className="flex-1 bg-[#12131e] border border-white/[0.12] focus:border-purple-500/60 rounded-lg px-3 py-1.5 text-xs font-bold text-white text-center outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setEditBpm(Math.min(240, editBpm + 1))}
+                        className="w-8 h-9 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 font-bold text-sm flex items-center justify-center"
+                      >
+                        +
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditBpm(Math.round(editBpm / 2))}
+                        title="Halbieren (z. B. 160 -> 80)"
+                        className="px-2 h-9 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-[10px] text-zinc-400 hover:text-white"
+                      >
+                        ÷2
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditBpm(Math.round(editBpm * 2))}
+                        title="Verdoppeln (z. B. 75 -> 150)"
+                        className="px-2 h-9 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-[10px] text-zinc-400 hover:text-white"
+                      >
+                        ×2
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Key Field */}
+                  <div>
+                    <label className="text-[11px] font-bold text-zinc-400 block mb-1">
+                      Tonart (Key)
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        list="key-suggestions"
+                        value={editKey}
+                        onChange={(e) => setEditKey(e.target.value)}
+                        placeholder="z. B. D# Minor, C Minor..."
+                        className="flex-1 bg-[#12131e] border border-white/[0.12] focus:border-purple-500/60 rounded-lg px-3 py-1.5 text-xs font-bold text-white outline-none"
+                      />
+                      <datalist id="key-suggestions">
+                        {COMMON_KEYS.map((k) => (
+                          <option key={k} value={k} />
+                        ))}
+                      </datalist>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick Key Chips */}
+                <div>
+                  <div className="text-[10px] font-semibold text-zinc-500 mb-1">Schnell-Auswahl Tonarten:</div>
+                  <div className="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto">
+                    {COMMON_KEYS.map((k) => (
+                      <button
+                        key={k}
+                        type="button"
+                        onClick={() => setEditKey(k)}
+                        className={`text-[10px] px-2 py-0.5 rounded-md border transition-all ${
+                          editKey.toLowerCase() === k.toLowerCase()
+                            ? 'bg-purple-500/30 border-purple-500/70 text-purple-200 font-bold'
+                            : 'bg-white/[0.03] border-white/[0.06] text-zinc-400 hover:text-zinc-200'
+                        }`}
+                      >
+                        {k}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Sync Metadata Checkbox */}
+                <label className="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer pt-1 select-none">
+                  <input
+                    type="checkbox"
+                    checked={syncMetaWithBpm}
+                    onChange={(e) => setSyncMetaWithBpm(e.target.checked)}
+                    className="rounded border-zinc-700 text-purple-600 focus:ring-purple-500 bg-zinc-900 w-4 h-4"
+                  />
+                  <span>YouTube Titel, Beschreibung & Timestamps automatisch mit neuen Audio-Daten aktualisieren</span>
+                </label>
+
+                {/* Action Buttons */}
+                <div className="flex items-center justify-end gap-2 pt-1 border-t border-white/[0.06]">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingAudioInfo(false)}
+                    className="px-3 py-1.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-xs font-semibold text-zinc-300"
+                  >
+                    Abbrechen
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveAudioInfo}
+                    disabled={isSavingAudioInfo}
+                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-md shadow-purple-500/20 disabled:opacity-50"
+                  >
+                    {isSavingAudioInfo ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Aktualisiere...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Speichern & Daten übernehmen</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {project.vibe && (
               <p className="text-xs text-zinc-400 mt-1 font-medium">{project.vibe}</p>
             )}
@@ -750,8 +948,20 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
                   </select>
                 </div>
 
-                <div className="p-3 bg-[#090a0f] border border-white/[0.05] rounded-xl text-[11px] text-zinc-400 leading-relaxed">
-                  💡 Animierte Typografie wird automatisch bei Sekunde 5 (`{project.key} · {project.bpm} BPM`) und Sekunde 10 (`listen full version now`) eingeblendet.
+                <div className="p-3 bg-[#090a0f] border border-white/[0.05] rounded-xl text-[11px] text-zinc-400 leading-relaxed flex items-center justify-between gap-2">
+                  <div>
+                    💡 Eingebrannte Typo bei Sek. 5: <span className="text-white font-bold">{project.key} · {project.bpm} BPM</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditingAudioInfo(true);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    className="text-[11px] text-purple-400 hover:text-purple-300 font-semibold underline flex-shrink-0"
+                  >
+                    BPM / Key anpassen
+                  </button>
                 </div>
               </div>
 
@@ -940,6 +1150,27 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
                   <span>↻ Neu generieren</span>
                 </button>
               </div>
+            </div>
+
+            {/* Audio Basis Banner */}
+            <div className="flex items-center justify-between gap-3 bg-[#090a0f] border border-white/[0.06] rounded-xl px-4 py-2.5">
+              <div className="flex items-center gap-2 text-xs text-zinc-300">
+                <Music className="w-3.5 h-3.5 text-purple-400" />
+                <span>Audio-Basis für Titel & Beschreibung:</span>
+                <span className="font-bold text-white px-2 py-0.5 rounded bg-purple-500/20 border border-purple-500/30">
+                  {project.bpm || 140} BPM · {project.key || 'C Minor'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEditingAudioInfo(true);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="text-xs text-purple-400 hover:text-purple-300 font-semibold underline"
+              >
+                Tempo / Key ändern
+              </button>
             </div>
 
             {isEditingMeta ? (

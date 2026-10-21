@@ -129,6 +129,16 @@ def mark_project_completed(name: str, completed: bool = True):
         conn.execute("UPDATE projects SET is_completed = ?, updated_at = ? WHERE name = ?", (1 if completed else 0, time.time(), name))
     conn.close()
 
+def update_project_audio_info(name: str, bpm: int, key_str: str, vibe: Optional[str] = None):
+    conn = get_db()
+    now = time.time()
+    with conn:
+        if vibe:
+            conn.execute("UPDATE projects SET bpm = ?, key = ?, vibe = ?, updated_at = ? WHERE name = ?", (bpm, key_str, vibe, now, name))
+        else:
+            conn.execute("UPDATE projects SET bpm = ?, key = ?, updated_at = ? WHERE name = ?", (bpm, key_str, now, name))
+    conn.close()
+
 def delete_project_record(name: str):
     conn = get_db()
     with conn:

@@ -70,7 +70,7 @@ def call_gemini_metadata_agent(api_key: str, safe_name: str, analysis: Dict[str,
         f"<15 spezifische SEO Tags passend zu den gewählten Künstlern, {bpm} bpm, {key_str}, prodbyjmd>\n"
     )
 
-    for model_name in ["gemini-2.5-flash", "gemini-3.5-flash", "gemini-flash-latest"]:
+    for model_name in ["gemini-3.5-flash", "gemini-3.8-flash", "gemini-3.1-flash-lite", "gemini-flash-latest"]:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
@@ -83,7 +83,7 @@ def call_gemini_metadata_agent(api_key: str, safe_name: str, analysis: Dict[str,
                 headers={"Content-Type": "application/json"},
                 method="POST"
             )
-            with urllib.request.urlopen(req, timeout=20) as resp:
+            with urllib.request.urlopen(req, timeout=8) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 cands = data.get("candidates", [])
                 if cands:
@@ -94,6 +94,26 @@ def call_gemini_metadata_agent(api_key: str, safe_name: str, analysis: Dict[str,
         except Exception as e:
             print(f"[Metadata Gemini ({model_name})] Fallback:", e)
     return None
+
+def patch_metadata_audio_info(content: str, old_bpm: int, new_bpm: int, old_key: str, new_key: str, timestamps: list) -> str:
+    """Updates BPM, Key and Timestamps inside existing metadata.md without losing custom user edits."""
+    import re
+    res = content
+    if old_bpm and old_bpm != new_bpm:
+        res = re.sub(r'\b' + str(old_bpm) + r'\s*BPM\b', f'{new_bpm} BPM', res, flags=re.IGNORECASE)
+    res = re.sub(r'• Tempo:\s*\d+\s*BPM', f'• Tempo: {new_bpm} BPM', res, flags=re.IGNORECASE)
+    res = re.sub(r'⏳ Timestamps \(berechnet auf \d+ BPM\):', f'⏳ Timestamps (berechnet auf {new_bpm} BPM):', res, flags=re.IGNORECASE)
+
+    if old_key and old_key.strip().lower() != new_key.strip().lower():
+        res = re.sub(re.escape(old_key.strip()), new_key.strip(), res, flags=re.IGNORECASE)
+    res = re.sub(r'• Tonart \(Key\):\s*[^\n\r]+', f'• Tonart (Key): {new_key}', res, flags=re.IGNORECASE)
+
+    if timestamps:
+        ts_lines = "\n".join([f"{t} - {lbl}" for t, lbl in timestamps])
+        ts_block = f"⏳ Timestamps (berechnet auf {new_bpm} BPM):\n{ts_lines}"
+        res = re.sub(r'⏳ Timestamps \(berechnet auf \d+ BPM\):[\s\S]*?(?=\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━|\n\n---|\Z)', ts_block, res)
+
+    return res
 
 def generate_metadata_markdown(safe_name: str, p_dir: Optional[str] = None, force_refresh: bool = False) -> str:
     if p_dir is None:

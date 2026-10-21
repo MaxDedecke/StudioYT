@@ -113,16 +113,15 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
 
   // Thumbnail Studio State
   const [thumbState, setThumbState] = useState<ThumbnailState | null>(null);
-  const [artistInput, setArtistInput] = useState('');
+  const [brandTagInput, setBrandTagInput] = useState('prodbyjmd');
   const [isGeneratingThumbs, setIsGeneratingThumbs] = useState(false);
-  const [pollingThumbs, setPollingThumbs] = useState(false);
 
   // Metadata / Release Suite State
   const [metadataText, setMetadataText] = useState(project.metadata_text || '');
   const [isEditingMeta, setIsEditingMeta] = useState(false);
   const [isRegeneratingMeta, setIsRegeneratingMeta] = useState(false);
 
-  // Load thumbnail state on mount / tab change
+  // Load thumbnail state on mount
   useEffect(() => {
     loadThumbs(true);
   }, [project.name]);
@@ -131,28 +130,13 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
     try {
       const data = await getThumbnails(project.name);
       setThumbState(data);
-      if (initial && data.default_artist) {
-        setArtistInput(data.default_artist);
-      }
-      if (data.job && data.job.active) {
-        setPollingThumbs(true);
-      } else {
-        setPollingThumbs(false);
+      if (initial && (data.brand_tag || data.default_artist)) {
+        setBrandTagInput(data.brand_tag || data.default_artist || 'prodbyjmd');
       }
     } catch (e) {
       console.error(e);
     }
   };
-
-  useEffect(() => {
-    let timer: any = null;
-    if (pollingThumbs) {
-      timer = setTimeout(() => {
-        loadThumbs(false);
-      }, 1500);
-    }
-    return () => clearTimeout(timer);
-  }, [pollingThumbs, thumbState]);
 
   // Audio Player Handlers
   const togglePlay = () => {
@@ -281,12 +265,12 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
   const handleGenerateThumbnails = async () => {
     setIsGeneratingThumbs(true);
     try {
-      await generateThumbnails(project.name, artistInput.trim(), 4);
-      showToast('Thumbnail-Generierung gestartet...');
-      setPollingThumbs(true);
+      await generateThumbnails(project.name, brandTagInput.trim() || 'prodbyjmd');
+      showToast('Brand-Thumbnails erfolgreich erstellt!');
       loadThumbs(false);
+      onRefresh();
     } catch (e: any) {
-      alert(e.message || 'Fehler');
+      alert(e.message || 'Fehler beim Erstellen der Thumbnails');
     } finally {
       setIsGeneratingThumbs(false);
     }
@@ -1005,11 +989,11 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
               <h2 className="text-base font-extrabold text-white flex items-center gap-2">
-                <ImageIcon className="w-4 h-4 text-cyan-400" />
-                <span>YouTube Thumbnail Studio (Feed-Optimiert)</span>
+                <Sparkles className="w-4 h-4 text-purple-400" />
+                <span>prodbyJMD Brand Thumbnail Studio</span>
               </h2>
               <p className="text-xs text-zinc-400 mt-1 max-w-2xl leading-relaxed">
-                4:5 Hochformat zentriert auf schwarzem 16:9-Hintergrund (1280×720) ohne störenden Text – genau wie die reichweitenstärksten Type-Beat Kanäle. Klicke auf dein Lieblingsbild, um es festzulegen.
+                Veredelt direkt das Artwork deines Beats mit deiner Brand <strong className="text-purple-300">prodbyjmd</strong> in 5 verschiedenen, exklusiven Producer-Aesthetics (1280×720 YouTube-Standard). Klicke einfach auf deinen Lieblings-Style, um ihn als aktives Thumbnail festzulegen.
               </p>
             </div>
 
@@ -1020,85 +1004,88 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
                 className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-500/20"
               >
                 <Download className="w-4 h-4" />
-                <span>Ausgewähltes Thumbnail speichern</span>
+                <span>Aktives Thumbnail herunterladen</span>
               </a>
             )}
           </div>
 
-          {/* Artist Tags Fast Selection */}
-          {thumbState?.artists && thumbState.artists.length > 0 && (
-            <div>
-              <div className="text-[11px] font-semibold text-zinc-400 mb-1.5">Erkannte Artists aus den Metadaten:</div>
-              <div className="flex flex-wrap gap-2">
-                {thumbState.artists.map((a) => (
-                  <button
-                    key={a}
-                    onClick={() => setArtistInput(a)}
-                    className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
-                      artistInput === a
-                        ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300 font-bold'
-                        : 'bg-white/[0.04] border-white/[0.08] text-zinc-300 hover:border-white/20'
-                    }`}
-                  >
-                    {a}
-                  </button>
-                ))}
-              </div>
+          {/* Brand Tag Input Row */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-[#090a0f] border border-white/[0.08] p-3.5 rounded-2xl">
+            <div className="flex items-center gap-2 flex-1">
+              <span className="text-xs font-bold text-zinc-400 whitespace-nowrap">Brand / Watermark:</span>
+              <input
+                type="text"
+                value={brandTagInput}
+                onChange={(e) => setBrandTagInput(e.target.value)}
+                placeholder="prodbyjmd"
+                className="flex-1 bg-[#12131e] border border-white/[0.1] focus:border-purple-500/60 rounded-xl px-3.5 py-2 text-xs font-bold text-white placeholder-zinc-500 outline-none"
+              />
             </div>
-          )}
 
-          {/* Prompt / Artist input row */}
-          <div className="flex items-center gap-3">
-            <input
-              type="text"
-              value={artistInput}
-              onChange={(e) => setArtistInput(e.target.value)}
-              placeholder="Artist eingeben (z. B. Future x Drake, Metro Boomin, Travis Scott, Juice WRLD)..."
-              className="flex-1 bg-[#090a0f] border border-white/[0.1] focus:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white placeholder-zinc-500 outline-none"
-            />
+            {/* Quick Tag Presets */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {['prodbyjmd', '@prodbyJMD', 'PRODBYJMD'].map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setBrandTagInput(t)}
+                  className={`text-[11px] px-2.5 py-1 rounded-lg border transition-all ${
+                    brandTagInput === t
+                      ? 'bg-purple-500/20 border-purple-500/60 text-purple-200 font-bold'
+                      : 'bg-white/[0.04] border-white/[0.06] text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+
             <button
               onClick={handleGenerateThumbnails}
-              disabled={isGeneratingThumbs || !!(thumbState?.job && thumbState.job.active)}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 disabled:opacity-50 text-white text-xs font-bold shadow-md shadow-cyan-500/20 flex items-center gap-2"
+              disabled={isGeneratingThumbs}
+              className="px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 text-white text-xs font-bold shadow-md shadow-purple-500/20 flex items-center justify-center gap-2 flex-shrink-0"
             >
-              {thumbState?.job && thumbState.job.active ? (
+              {isGeneratingThumbs ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Generiert...</span>
+                  <span>Erstelle Styles...</span>
                 </>
               ) : (
                 <>
                   <Sparkles className="w-4 h-4" />
-                  <span>4 Thumbnails generieren</span>
+                  <span>Styles neu generieren</span>
                 </>
               )}
             </button>
           </div>
 
-          {/* Grid of Thumbnails */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Grid of Brand Thumbnails */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
             {thumbState?.variants.map((v) => {
               const isSelected = thumbState.selected_src === v;
+              const fname = v.split('/').pop() || '';
+              const styleName = thumbState.style_labels?.[fname] || fname.replace('.jpg', '').replace('style_', 'Style ');
+
               return (
                 <div
                   key={v}
                   onClick={() => handleSelectThumbnail(v)}
                   className={`p-2.5 rounded-2xl cursor-pointer transition-all duration-200 border-2 ${
                     isSelected
-                      ? 'bg-emerald-500/10 border-emerald-500 shadow-xl shadow-emerald-500/10'
-                      : 'bg-[#0d0e15] border-transparent hover:border-white/20'
+                      ? 'bg-emerald-500/10 border-emerald-500 shadow-xl shadow-emerald-500/15'
+                      : 'bg-[#0d0e15] border-white/[0.06] hover:border-purple-500/40'
                   }`}
                 >
                   <div className="relative aspect-video rounded-xl overflow-hidden bg-black">
                     <img
                       src={`/projects/${project.name}/${v}`}
-                      alt="Thumbnail"
+                      alt={styleName}
                       className="w-full h-full object-cover"
                     />
                     {isSelected && (
-                      <div className="absolute top-2 left-2 px-2 py-1 rounded bg-emerald-500 text-black text-[10px] font-extrabold flex items-center gap-1 shadow-md">
+                      <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-emerald-500 text-black text-[10px] font-extrabold flex items-center gap-1 shadow-md">
                         <Check className="w-3 h-3 stroke-[3]" />
-                        <span>AUSGEWÄHLT</span>
+                        <span>AKTIV</span>
                       </div>
                     )}
                     {project.duration_str && project.duration_str !== '--:--' && (
@@ -1108,12 +1095,12 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
                     )}
                   </div>
 
-                  <div className="mt-2.5">
-                    <div className="text-xs font-semibold text-zinc-200 line-clamp-2 leading-snug">
-                      [FREE] {artistInput || 'Type'} Type Beat 2026 - "{project.name.toUpperCase()}"
+                  <div className="mt-2.5 px-1">
+                    <div className="text-xs font-bold text-zinc-200 truncate">
+                      {styleName}
                     </div>
-                    <div className="text-[11px] text-zinc-500 mt-1">
-                      prodbyJMD · Vorschau im Feed
+                    <div className="text-[11px] text-zinc-500 mt-0.5">
+                      {isSelected ? '✓ Aktives YouTube-Thumbnail' : 'Klicken zum Aktivieren'}
                     </div>
                   </div>
                 </div>

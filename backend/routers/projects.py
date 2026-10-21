@@ -103,6 +103,13 @@ async def upload_mp3(file: UploadFile = File(...), name: Optional[str] = Query(N
     with open(os.path.join(p_dir, "gemini_prompt.txt"), "w", encoding="utf-8") as f:
         f.write(prompt_text)
 
+    # 1.1 Generate prodbyjmd Brand Thumbnails directly from artwork
+    try:
+        from backend.services.thumbnail_service import generate_brand_thumbnails
+        generate_brand_thumbnails(p_dir, brand_tag="prodbyjmd")
+    except Exception:
+        pass
+
     # 2. Generate Audio Analysis & Metadata
     meta_text = generate_metadata_markdown(safe_name, p_dir=p_dir, force_refresh=True)
     with open(os.path.join(p_dir, "metadata.md"), "w", encoding="utf-8") as f:

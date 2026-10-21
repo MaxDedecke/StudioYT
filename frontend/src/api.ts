@@ -125,13 +125,13 @@ export async function getThumbnails(project: string): Promise<ThumbnailState> {
   return res.json();
 }
 
-export async function generateThumbnails(project: string, artist = '', count = 4): Promise<{ success: boolean }> {
+export async function generateThumbnails(project: string, brand_tag = 'prodbyjmd', _count?: number): Promise<{ success: boolean; brand_tag: string; variants: string[] }> {
   const res = await fetch(`${BASE_URL}/api/generate_thumbnails`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ project, artist, count }),
+    body: JSON.stringify({ project, brand_tag }),
   });
-  if (!res.ok) throw new Error('Fehler beim Starten der Thumbnail-Generierung');
+  if (!res.ok) throw new Error('Fehler beim Generieren der Brand-Thumbnails');
   return res.json();
 }
 

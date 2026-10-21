@@ -49,19 +49,13 @@ export interface AppConfig {
 }
 
 export interface ThumbnailState {
-  artists: string[];
-  titles: string[];
-  default_artist: string;
+  brand_tag?: string;
+  artists?: string[];
+  titles?: string[];
+  default_artist?: string;
   variants: string[];
   has_selected: boolean;
   selected_src: string;
-  job?: {
-    active: boolean;
-    artist: string;
-    total: number;
-    done: number;
-    failed: number;
-    label: string;
-    new_files: string[];
-  } | null;
+  style_labels?: Record<string, string>;
+  job?: any;
 }

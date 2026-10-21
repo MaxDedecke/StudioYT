@@ -1,0 +1,28 @@
+import os
+import threading
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+from backend.config import PROJECTS_DIR
+from backend.services.artwork_service import assign_unique_artwork
+from backend.services.drive_service import sync_project_to_drive
+
+router = APIRouter(prefix="/api", tags=["artwork"])
+
+class RegenerateArtworkRequest(BaseModel):
+    project: str
+
+@router.post("/regenerate_artwork")
+def regenerate_artwork(data: RegenerateArtworkRequest):
+    project_name = data.project
+    p_dir = os.path.join(PROJECTS_DIR, project_name)
+    if not os.path.isdir(p_dir):
+        raise HTTPException(status_code=400, detail="Project not found")
+
+    try:
+        prompt_text = assign_unique_artwork(p_dir, project_name, force_new=True)
+        with open(os.path.join(p_dir, "gemini_prompt.txt"), "w", encoding="utf-8") as f:
+            f.write(prompt_text)
+        threading.Thread(target=sync_project_to_drive, args=(project_name,), daemon=True).start()
+        return {"success": True, "project": project_name, "prompt_text": prompt_text}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

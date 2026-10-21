@@ -3,26 +3,21 @@ setlocal
 cd /d "%~dp0"
 
 echo ========================================================
-echo        Starte FLYT STUDIO Dashboard...
+echo        Starte FLYT STUDIO PLATFORM 2.0...
 echo ========================================================
 echo.
 
-set "PY_EXE="
-if exist "C:\Program Files\Blender Foundation\Blender 5.2\5.2\python\bin\python.exe" (
-    set "PY_EXE=C:\Program Files\Blender Foundation\Blender 5.2\5.2\python\bin\python.exe"
-) else (
-    set "PY_EXE=python.exe"
-)
+set "PY_EXE=python.exe"
 
-:: Browser öffnen
+:: Browser oeffnen
 start "" http://localhost:4488
 
-:: Prüfe ob Server bereits auf Port 4488 läuft
+:: Pruefe ob Server bereits auf Port 4488 laeuft
 netstat -ano | findstr :4488 >nul 2>&1
 if %errorlevel% equ 0 (
-    echo [INFO] FLYT Studio Server laeuft bereits auf Port 4488!
+    echo [INFO] FLYT Studio Platform laeuft bereits auf Port 4488!
     exit /b 0
 )
 
-echo [INFO] Starte Server...
-"%PY_EXE%" server.py
+echo [INFO] Starte Plattform (FastAPI + React Studio)...
+"%PY_EXE%" run_platform.py

@@ -9,15 +9,13 @@ echo.
 
 set "PY_EXE=python.exe"
 
+:: Beende alte Instanzen auf Port 4488, damit immer die aktuelle Version laeuft
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr :4488 ^| findstr LISTENING') do (
+    taskkill /f /pid %%a >nul 2>&1
+)
+
 :: Browser oeffnen
 start "" http://localhost:4488
-
-:: Pruefe ob Server bereits auf Port 4488 laeuft
-netstat -ano | findstr :4488 >nul 2>&1
-if %errorlevel% equ 0 (
-    echo [INFO] FLYT Studio Platform laeuft bereits auf Port 4488!
-    exit /b 0
-)
 
 echo [INFO] Starte Plattform (FastAPI + React Studio)...
 "%PY_EXE%" run_platform.py

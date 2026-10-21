@@ -12,9 +12,10 @@ RENDER_JOBS: Dict[str, Dict[str, Any]] = {}
 RENDER_LOCK = threading.Lock()
 
 def run_ffmpeg_tracked(cmd: list, target_duration: float, job: Dict[str, Any], stage_prefix: str, weight_start: float, weight_end: float) -> Tuple[bool, str]:
-    full_cmd = [cmd[0], "-y", "-progress", "pipe:1", "-nostats"] + cmd[2:]
+    full_cmd = [cmd[0], "-nostdin", "-y", "-progress", "pipe:1", "-nostats"] + [c for c in cmd[1:] if c not in ("-y", "-nostdin")]
     proc = subprocess.Popen(
         full_cmd,
+        stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
@@ -24,44 +25,56 @@ def run_ffmpeg_tracked(cmd: list, target_duration: float, job: Dict[str, Any], s
     )
     cur_sec = 0.0
     tail_lines = []
-    for line in proc.stdout:
-        sline = line.strip()
-        if sline:
-            tail_lines.append(sline)
-            if len(tail_lines) > 25:
-                tail_lines.pop(0)
+    try:
+        for line in proc.stdout:
+            sline = line.strip()
+            if sline:
+                tail_lines.append(sline)
+                if len(tail_lines) > 25:
+                    tail_lines.pop(0)
 
-        if sline.startswith("out_time_us=") or sline.startswith("out_time_ms="):
-            val_str = sline.split("=", 1)[1].strip()
-            if val_str.lstrip("-").isdigit():
-                us = int(val_str)
-                if us > 0:
-                    cur_sec = us / 1_000_000.0
-                    stage_pct = min(99, max(0, int((cur_sec / max(1.0, target_duration)) * 100)))
-                    overall_pct = int(weight_start + (stage_pct / 100.0) * (weight_end - weight_start))
-                    job[f"{stage_prefix}_percent"] = stage_pct
-                    job["percent"] = min(99, max(job.get("percent", 0), overall_pct))
-                    job["current_time_str"] = f"{format_mmss(cur_sec)} / {format_mmss(target_duration)}"
+            if sline.startswith("out_time_us=") or sline.startswith("out_time_ms="):
+                val_str = sline.split("=", 1)[1].strip()
+                if val_str.lstrip("-").isdigit():
+                    us = int(val_str)
+                    if us > 0:
+                        cur_sec = us / 1_000_000.0
+                        stage_pct = min(99, max(0, int((cur_sec / max(1.0, target_duration)) * 100)))
+                        overall_pct = int(weight_start + (stage_pct / 100.0) * (weight_end - weight_start))
+                        job[f"{stage_prefix}_percent"] = stage_pct
+                        job["percent"] = min(99, max(job.get("percent", 0), overall_pct))
+                        job["current_time_str"] = f"{format_mmss(cur_sec)} / {format_mmss(target_duration)}"
 
-        elif sline.startswith("speed="):
-            spd_str = sline.split("=", 1)[1].strip()
-            job["speed"] = spd_str
-            spd_num = spd_str.replace("x", "").strip()
-            try:
-                spd_f = float(spd_num)
-                if spd_f > 0.05 and cur_sec > 0:
-                    rem_sec = max(0, int((target_duration - cur_sec) / spd_f))
-                    job["eta_str"] = f"~{rem_sec}s"
-            except Exception:
-                pass
+            elif sline.startswith("speed="):
+                spd_str = sline.split("=", 1)[1].strip()
+                job["speed"] = spd_str
+                spd_num = spd_str.replace("x", "").strip()
+                try:
+                    spd_f = float(spd_num)
+                    if spd_f > 0.05 and cur_sec > 0:
+                        rem_sec = max(0, int((target_duration - cur_sec) / spd_f))
+                        job["eta_str"] = f"~{rem_sec}s"
+                except Exception:
+                    pass
 
-        elif sline == "progress=end":
-            job[f"{stage_prefix}_percent"] = 100
-            job["percent"] = int(weight_end)
-            job["current_time_str"] = f"{format_mmss(target_duration)} / {format_mmss(target_duration)}"
+            elif sline == "progress=end":
+                job[f"{stage_prefix}_percent"] = 100
+                job["percent"] = int(weight_end)
+                job["current_time_str"] = f"{format_mmss(target_duration)} / {format_mmss(target_duration)}"
+                break
+    except Exception as e:
+        print("[run_ffmpeg_tracked] error:", e)
 
-    proc.wait()
-    return proc.returncode == 0, "\n".join(tail_lines)
+    try:
+        proc.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+        try:
+            proc.kill()
+            proc.wait(timeout=2)
+        except Exception:
+            pass
+
+    return proc.returncode == 0 or proc.returncode is None, "\n".join(tail_lines)
 
 def build_main_video_cmd(p_dir: str) -> list:
     mp3_path = os.path.join(p_dir, "beat.mp3")
@@ -151,7 +164,6 @@ def build_short_video_cmd(p_dir: str, beat_duration: float, short_start: float =
             "-af", af_filter,
             "-c:a", "aac", "-b:a", "320k",
             "-pix_fmt", "yuv420p",
-            "-shortest",
             "-movflags", "+faststart",
             output_short
         ]
@@ -168,7 +180,6 @@ def build_short_video_cmd(p_dir: str, beat_duration: float, short_start: float =
             "-af", af_filter,
             "-c:a", "aac", "-b:a", "320k",
             "-pix_fmt", "yuv420p",
-            "-shortest",
             "-movflags", "+faststart",
             output_short
         ]

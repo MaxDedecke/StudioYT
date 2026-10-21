@@ -86,16 +86,21 @@ export function App() {
 
   // Periodic polling for background render jobs
   useEffect(() => {
+    let wasActive = false;
     const interval = setInterval(async () => {
       try {
         const status = await getRenderStatus();
         if (status.active_any) {
+          wasActive = true;
+          loadProjects();
+        } else if (wasActive) {
+          wasActive = false;
           loadProjects();
         }
       } catch (e) {
         // quiet
       }
-    }, 2000);
+    }, 1500);
     return () => clearInterval(interval);
   }, [showCompleted]);
 

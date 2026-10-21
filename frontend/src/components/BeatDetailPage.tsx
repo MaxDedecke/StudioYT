@@ -343,6 +343,15 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
   const shortVideoUrl = `/projects/${project.name}/short_reel_video.mp4?t=${project.updated_at || 0}`;
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
+  // Active render polling effect to keep UI 100% in sync while FFmpeg encodes
+  useEffect(() => {
+    if (!isJobActive && !isRendering) return;
+    const timer = setInterval(() => {
+      onRefresh();
+    }, 1200);
+    return () => clearInterval(timer);
+  }, [isJobActive, isRendering]);
+
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto px-4 sm:px-6 py-6 pb-20">
       {/* Hidden file input for loop */}

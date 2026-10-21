@@ -59,6 +59,16 @@ export async function regenerateArtwork(project: string): Promise<{ success: boo
   return res.json();
 }
 
+export async function analyzeArtwork(project: string): Promise<{ success: boolean; prompt_text: string }> {
+  const res = await fetch(`${BASE_URL}/api/analyze_artwork`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ project }),
+  });
+  if (!res.ok) throw new Error('Fehler bei der Bild-Analyse');
+  return res.json();
+}
+
 export async function triggerRender(project: string, mode = 'both', short_start?: number, short_duration = 30): Promise<{ success: boolean; job: RenderJob }> {
   const res = await fetch(`${BASE_URL}/api/render`, {
     method: 'POST',

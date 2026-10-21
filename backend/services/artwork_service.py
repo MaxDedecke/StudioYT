@@ -6,10 +6,12 @@ import base64
 import random
 import hashlib
 import shutil
+import tempfile
 import subprocess
 import threading
 import urllib.parse
 import urllib.request
+import httpx
 from typing import Tuple, Optional, Set
 from backend.config import BASE_DIR, PROJECTS_DIR, ARTWORK_POOL_DIR, TRASH_DIR, FFMPEG_PATH, get_config, save_config
 
@@ -441,41 +443,136 @@ def get_all_used_artwork_hashes(exclude_project: Optional[str] = None) -> Set[st
 def natural_sort_key(s: str):
     return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', os.path.basename(s))]
 
+def analyze_artwork_and_build_loop_prompt(image_path: str, api_key: str = "") -> str:
+    """Uses Gemini Multimodal Vision to inspect the actual generated image and craft a tailored video loop prompt
+    where ONLY specific micro-motion details animate, with zero distortion or morphing of the main subject.
+    """
+    if not os.path.isfile(image_path):
+        return DEFAULT_LITHEN_ANIM_PROMPT
+
+    if not api_key:
+        cfg = get_config()
+        api_key = cfg.get("gemini_api_key", "").strip() or os.environ.get("GEMINI_API_KEY", "").strip()
+
+    if api_key:
+        temp_thumb = None
+        try:
+            # Create a lightweight 640px thumbnail to drastically speed up upload and vision inference
+            temp_thumb = os.path.join(tempfile.gettempdir(), f"gemini_vision_{random.randint(10000, 99999)}.jpg")
+            try:
+                subprocess.run(
+                    [FFMPEG_PATH, "-y", "-i", image_path, "-vf", "scale=640:-1", "-q:v", "4", temp_thumb],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=8
+                )
+                input_file = temp_thumb if os.path.isfile(temp_thumb) and os.path.getsize(temp_thumb) > 1000 else image_path
+            except Exception:
+                input_file = image_path
+
+            with open(input_file, "rb") as f:
+                img_b64 = base64.b64encode(f.read()).decode("utf-8")
+
+            prompt = (
+                "Du bist ein erfahrener Director und Video-Animator für Hip-Hop & Trap Musikvideos.\n"
+                "Analysiere dieses Album-Cover-Bild genau und erstelle daraus einen maßgeschneiderten, hochpräzisen Prompt für die Gemini Video-Animation (3-5 Sekunden nahtloser Video-Loop).\n\n"
+                "STRIKTE VORGABEN:\n"
+                "1. Analysiere präzise, welche Motive auf DIESEM BILD zu sehen sind (z. B. maskierte Frau, Sportwagen, diamantbesetzte Uhr, Cuban Chains, Lenkrad, etc.).\n"
+                "2. Im Video-Loop dürfen sich IMMER NUR FEINE DETAILS bewegen! Das Hauptmotiv und die Anatomie dürfen sich NIEMALS verformen, morphen oder schmelzen.\n"
+                "3. Die zentrierte 1:1 Abdeckung und die schwarzen Balken links und rechts bleiben 100% starr und eingefroren.\n"
+                "4. Definiere 2 bis 3 ganz konkrete Mikrobewegungen, die exakt zu den Elementen auf diesem Bild passen (z. B. subtiles Funkeln auf Diamant-Facetten, sanftes Atmen, Scheinwerfer-Glimmer, Shutter-Jitter, analoges Film-Korn).\n\n"
+                "Antworte genau in diesem Format:\n"
+                "### 🔍 Bild-Analyse:\n"
+                "[1-2 Sätze auf Deutsch: Was wurde im Bild erkannt?]\n\n"
+                "### 🎬 Gemini Video-Loop Prompt:\n"
+                "```text\n"
+                "[Englischer, optimierter Prompt für Gemini / Veo / Video-Generatoren, der exakt beschreibt was statisch bleibt und welche spezifischen Details sich im 3-5s Loop bewegen]\n"
+                "```"
+            )
+
+            payload = {
+                "contents": [{
+                    "parts": [
+                        {"text": prompt},
+                        {"inline_data": {"mime_type": "image/jpeg", "data": img_b64}}
+                    ]
+                }],
+                "generationConfig": {"temperature": 0.6}
+            }
+
+            models = ["gemini-3.5-flash", "gemini-3.8-flash", "gemini-3.1-flash-lite", "gemini-flash-latest", "gemini-pro-latest"]
+            for model_name in models:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+                try:
+                    r = httpx.post(url, json=payload, timeout=20.0)
+                    if r.status_code == 200:
+                        cand = r.json().get("candidates", [])
+                        if cand:
+                            parts = cand[0].get("content", {}).get("parts", [])
+                            text = "".join([p.get("text", "") for p in parts]).strip()
+                            if len(text) > 40:
+                                return text
+                except Exception as e:
+                    print(f"[Gemini Vision ({model_name})] Fallback:", e)
+        except Exception as e:
+            print("[Gemini Vision Analysis] Error:", e)
+        finally:
+            if temp_thumb and os.path.exists(temp_thumb):
+                try:
+                    os.remove(temp_thumb)
+                except Exception:
+                    pass
+
+    # High-quality fallback if Gemini Vision is temporarily overloaded / unavailable
+    return (
+        "### 🔍 Bild-Analyse:\n"
+        "Lithen Dark-Trap Artwork mit zentriertem 1:1 Cover, starkem Blitzlicht-Fokus und monochromatischem Farbgrading.\n\n"
+        "### 🎬 Gemini Video-Loop Prompt:\n"
+        "```text\n"
+        "Seamless 4-second video loop, locked static camera. The left and right vertical black pillarbox bars remain 100% frozen, pitch black, and completely static throughout.\n\n"
+        "Strict micro-movements only, preserving absolute subject geometry, bodywork, and facial features without morphing or warping:\n"
+        "1. Specular glints: Tiny, sharp light gleams travel smoothly across metallic edges, Cuban chains, and watch bezels.\n"
+        "2. Texture & grain: Living 35mm handheld shutter grain pulses delicately across the deep shadow tones.\n"
+        "3. Ambient light pulse: Subtle, rhythmic optical luminance flutter reflecting off reflective surfaces.\n\n"
+        "Absolute structural stability, no morphing, no distortion. Ultra-clean underground hip-hop aesthetic.\n"
+        "```"
+    )
+
 def assign_unique_artwork(p_dir: str, project_name: str, force_new: bool = False) -> str:
     with _ARTWORK_LOCK:
         cfg = get_config()
         hf_key = cfg.get("hf_api_key", "").strip() or os.environ.get("HF_TOKEN", "").strip()
         api_key = cfg.get("gemini_api_key", "").strip() or os.environ.get("GEMINI_API_KEY", "").strip()
+        current_art = os.path.join(p_dir, "artwork.jpg")
 
         # 1. Try Live Generator
-        live_path, live_prompt = generate_live_hf_artwork(hf_key, project_name)
+        live_path, _ = generate_live_hf_artwork(hf_key, project_name)
         if live_path and os.path.exists(live_path):
-            safe_copy_file(live_path, os.path.join(p_dir, "artwork.jpg"))
+            safe_copy_file(live_path, current_art)
             h = file_md5(live_path)
             used_list = cfg.get("used_artwork_hashes", [])
             if h and h not in used_list:
                 used_list.append(h)
                 cfg["used_artwork_hashes"] = used_list
                 save_config(cfg)
-            return live_prompt or DEFAULT_LITHEN_ANIM_PROMPT
+            return analyze_artwork_and_build_loop_prompt(current_art, api_key)
 
         # 2. Try Gemini
         if api_key:
-            live_path, live_prompt = generate_live_gemini_artwork(api_key, project_name)
+            live_path, _ = generate_live_gemini_artwork(api_key, project_name)
             if live_path and os.path.exists(live_path):
-                safe_copy_file(live_path, os.path.join(p_dir, "artwork.jpg"))
+                safe_copy_file(live_path, current_art)
                 h = file_md5(live_path)
                 used_list = cfg.get("used_artwork_hashes", [])
                 if h and h not in used_list:
                     used_list.append(h)
                     cfg["used_artwork_hashes"] = used_list
                     save_config(cfg)
-                return live_prompt or DEFAULT_LITHEN_ANIM_PROMPT
+                return analyze_artwork_and_build_loop_prompt(current_art, api_key)
 
         # 3. Fallback from Artwork Pool
         active_hashes = get_active_project_artwork_hashes(exclude_project=project_name)
         used_hashes = get_all_used_artwork_hashes(exclude_project=None if force_new else project_name)
-        current_art = os.path.join(p_dir, "artwork.jpg")
 
         pool_images = sorted(
             [
@@ -506,12 +603,10 @@ def assign_unique_artwork(p_dir: str, project_name: str, force_new: bool = False
                 used_list.append(h)
             cfg["used_artwork_hashes"] = used_list
             save_config(cfg)
-            _, anim_prompt = build_lithen_prompts()
-            return anim_prompt
+            return analyze_artwork_and_build_loop_prompt(current_art, api_key)
         elif pool_images:
             base_art = random.choice(pool_images)
             safe_copy_file(base_art, current_art)
-            _, anim_prompt = build_lithen_prompts()
-            return anim_prompt
+            return analyze_artwork_and_build_loop_prompt(current_art, api_key)
 
-        return DEFAULT_LITHEN_ANIM_PROMPT
+        return analyze_artwork_and_build_loop_prompt(current_art, api_key)

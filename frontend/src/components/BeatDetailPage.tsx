@@ -23,6 +23,7 @@ import {
 import type { Project, ThumbnailState } from '../types';
 import {
   regenerateArtwork,
+  analyzeArtwork,
   uploadVideoLoop,
   triggerRender,
   regenerateMetadata,
@@ -61,6 +62,7 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
   // Artwork & Video Upload
   const loopInputRef = useRef<HTMLInputElement | null>(null);
   const [isUploadingLoop, setIsUploadingLoop] = useState(false);
+  const [isAnalyzingArtwork, setIsAnalyzingArtwork] = useState(false);
 
   // Video Studio State
   const [videoMode, setVideoMode] = useState<'main' | 'short'>('main');
@@ -150,23 +152,56 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
+  // Helpers to extract visual analysis vs pure video prompt
+  const extractCleanPrompt = (raw: string) => {
+    const match = raw.match(/```(?:text)?\s*([\s\S]*?)```/);
+    if (match && match[1]) {
+      return match[1].trim();
+    }
+    return raw.trim();
+  };
+
+  const extractAnalysis = (raw: string) => {
+    const match = raw.match(/### 🔍 Bild-Analyse:\s*([\s\S]*?)(?=### 🎬|$)/);
+    if (match && match[1]) {
+      return match[1].trim();
+    }
+    return null;
+  };
+
   // Actions
   const handleRegenArtwork = async () => {
-    showToast('Generiere neues Lithen Green-Night Artwork...');
+    showToast('Generiere neues Artwork & analysiere Bild für Gemini Loop...');
     try {
       await regenerateArtwork(project.name);
-      showToast('Neues Artwork gespeichert & gesichert');
+      showToast('Neues Artwork & maßgeschneiderter Loop-Prompt fertig!');
       onRefresh();
     } catch (e: any) {
       alert(e.message || 'Fehler beim Bildwechsel');
     }
   };
 
+  const handleAnalyzeArtwork = async () => {
+    setIsAnalyzingArtwork(true);
+    showToast('Gemini Vision analysiert das Cover für Loop-Mikrobewegungen...');
+    try {
+      const res = await analyzeArtwork(project.name);
+      project.prompt_text = res.prompt_text;
+      showToast('Bildanalyse abgeschlossen & Video-Prompt aktualisiert!');
+      onRefresh();
+    } catch (e: any) {
+      alert(e.message || 'Fehler bei der Bildanalyse');
+    } finally {
+      setIsAnalyzingArtwork(false);
+    }
+  };
+
   const handleCopyPromptAndOpenGemini = async () => {
     if (project.prompt_text) {
+      const cleanPrompt = extractCleanPrompt(project.prompt_text);
       try {
-        await navigator.clipboard.writeText(project.prompt_text);
-        showToast('Prompt in Zwischenablage kopiert!');
+        await navigator.clipboard.writeText(cleanPrompt);
+        showToast('Video-Prompt kopiert & Gemini geöffnet!');
       } catch (e) {
         console.error(e);
       }
@@ -500,18 +535,29 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Cover & Bildwechsel */}
           <div className="bg-[#101118] border border-white/[0.08] rounded-2xl p-6 flex flex-col gap-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <h2 className="text-sm font-bold text-white flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-purple-400" />
                 <span>Lithen Green-Night Artwork</span>
               </h2>
-              <button
-                onClick={handleRegenArtwork}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow transition-colors"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Neues Bild generieren</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleAnalyzeArtwork}
+                  disabled={isAnalyzingArtwork}
+                  title="Bild erneut mit Gemini Vision auf Mikrobewegungen analysieren"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-zinc-200 text-xs font-semibold disabled:opacity-50 transition-colors"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isAnalyzingArtwork ? 'animate-spin' : ''}`} />
+                  <span>Bild analysieren</span>
+                </button>
+                <button
+                  onClick={handleRegenArtwork}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow transition-colors"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Neues Bild generieren</span>
+                </button>
+              </div>
             </div>
 
             <div className="aspect-video rounded-xl overflow-hidden bg-black border border-white/[0.08] relative group">
@@ -532,25 +578,47 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
 
           {/* Gemini Video-Loop Generator */}
           <div className="bg-[#101118] border border-white/[0.08] rounded-2xl p-6 flex flex-col gap-4">
-            <h2 className="text-sm font-bold text-white flex items-center gap-2">
-              <Video className="w-4 h-4 text-cyan-400" />
-              <span>Gemini Video Loop</span>
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                <Video className="w-4 h-4 text-cyan-400" />
+                <span>Gemini Video Loop Generator</span>
+              </h2>
+              {isAnalyzingArtwork && (
+                <span className="text-xs text-cyan-400 font-semibold flex items-center gap-1 animate-pulse">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Analysiere Bild...</span>
+                </span>
+              )}
+            </div>
 
-            <p className="text-xs text-zinc-400 leading-relaxed">
-              Kopiere den maßgeschneiderten Video-Prompt, öffne Gemini, lade die animierte Loop-MP4 herunter und ziehe sie direkt hier rein.
-            </p>
+            {/* Display Visual Analysis Box if available */}
+            {extractAnalysis(project.prompt_text || '') && (
+              <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-xl p-3.5">
+                <div className="text-xs font-bold text-cyan-300 flex items-center gap-1.5 mb-1">
+                  <span>🔍 Visuelle Bild-Analyse:</span>
+                </div>
+                <div className="text-xs text-zinc-300 leading-relaxed">
+                  {extractAnalysis(project.prompt_text || '')}
+                </div>
+              </div>
+            )}
 
-            {/* Prompt Box */}
-            <div className="bg-[#090a0f] border border-white/[0.08] rounded-xl p-3.5 relative">
-              <div className="text-[11px] font-mono text-zinc-300 max-h-24 overflow-y-auto leading-relaxed">
-                {project.prompt_text || 'Kein Prompt hinterlegt.'}
+            {/* Clean Prompt Box */}
+            <div>
+              <div className="text-[11px] font-bold text-zinc-400 mb-1 flex items-center justify-between">
+                <span>Maßgeschneiderter Prompt (Nur Mikrobewegungen):</span>
+                <span className="text-[10px] text-zinc-500">100% starr, kein Morphen</span>
+              </div>
+              <div className="bg-[#090a0f] border border-white/[0.08] rounded-xl p-3.5 relative">
+                <div className="text-[11px] font-mono text-zinc-200 max-h-28 overflow-y-auto leading-relaxed whitespace-pre-wrap select-text">
+                  {extractCleanPrompt(project.prompt_text || '') || 'Kein Prompt hinterlegt. Klicke auf "Bild analysieren".'}
+                </div>
               </div>
             </div>
 
             <button
               onClick={handleCopyPromptAndOpenGemini}
-              className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold shadow-md shadow-cyan-500/20 transition-colors"
+              className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-semibold shadow-md shadow-cyan-500/20 transition-colors"
             >
               <Copy className="w-4 h-4" />
               <span>Prompt kopieren & Gemini öffnen</span>
@@ -560,7 +628,7 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
             {/* Video Loop Drop Zone */}
             <div
               onClick={() => loopInputRef.current?.click()}
-              className="border-2 border-dashed border-white/[0.12] hover:border-cyan-500/50 rounded-2xl p-6 flex flex-col items-center justify-center gap-2.5 cursor-pointer bg-[#090a0f] transition-all"
+              className="border-2 border-dashed border-white/[0.12] hover:border-cyan-500/50 rounded-2xl p-5 flex flex-col items-center justify-center gap-2 cursor-pointer bg-[#090a0f] transition-all"
             >
               {isUploadingLoop ? (
                 <div className="flex flex-col items-center gap-2 py-2">
@@ -569,8 +637,8 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
                 </div>
               ) : (
                 <>
-                  <div className="w-10 h-10 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-400">
-                    <Upload className="w-5 h-5" />
+                  <div className="w-9 h-9 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-400">
+                    <Upload className="w-4 h-4" />
                   </div>
                   <div className="text-center">
                     <div className="text-xs font-bold text-white">Animierte MP4 hier ablegen oder klicken</div>

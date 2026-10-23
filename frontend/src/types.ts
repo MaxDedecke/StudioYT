@@ -38,6 +38,8 @@ export interface Project {
   render_job?: RenderJob | null;
   prompt_text?: string;
   metadata_text?: string;
+  short_video_mtime?: number;
+  main_video_mtime?: number;
 }
 
 export interface AppConfig {

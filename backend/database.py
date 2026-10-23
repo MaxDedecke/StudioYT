@@ -78,6 +78,19 @@ def scan_and_sync_projects(analyze_fn, is_backup_fn) -> List[Dict[str, Any]]:
         duration_sec = analysis.get("duration_sec", 0.0) or analysis.get("duration", 0.0)
         
         if row:
+            changed = (
+                row["bpm"] != bpm or
+                row["key"] != key_str or
+                row["has_final_video"] != has_final or
+                row["has_short_video"] != has_short or
+                row["has_thumbnail"] != has_thumb or
+                row["has_artwork"] != has_art or
+                row["has_video_loop"] != has_loop or
+                row["has_metadata"] != has_meta or
+                row["is_completed"] != is_completed or
+                row["is_backed_up"] != is_backed_up
+            )
+            up_time = now if changed else (row["updated_at"] or now)
             cursor.execute("""
                 UPDATE projects SET
                     bpm = ?, key = ?, vibe = ?, duration_sec = ?, drop_sec = ?,
@@ -87,7 +100,7 @@ def scan_and_sync_projects(analyze_fn, is_backup_fn) -> List[Dict[str, Any]]:
                 WHERE name = ?
             """, (
                 bpm, key_str, vibe, duration_sec, drop_sec,
-                now, is_completed, is_backed_up,
+                up_time, is_completed, is_backed_up,
                 has_mp3, has_art, has_loop,
                 has_final, has_short, has_thumb, has_meta,
                 name

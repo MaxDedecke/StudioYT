@@ -329,8 +329,8 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
 
   const renderJob = project.render_job;
   const isJobActive = !!(renderJob && renderJob.active);
-  const mainVideoUrl = `/projects/${project.name}/final_youtube_video.mp4?t=${project.updated_at || 0}`;
-  const shortVideoUrl = `/projects/${project.name}/short_reel_video.mp4?t=${project.updated_at || 0}`;
+  const mainVideoUrl = `/projects/${project.name}/final_youtube_video.mp4?t=${project.main_video_mtime || project.updated_at || 0}`;
+  const shortVideoUrl = `/projects/${project.name}/short_reel_video.mp4?t=${project.short_video_mtime || project.updated_at || 0}`;
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   // Active render polling effect to keep UI 100% in sync while FFmpeg encodes

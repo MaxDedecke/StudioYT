@@ -134,7 +134,9 @@ def build_short_video_cmd(p_dir: str, beat_duration: float, short_start: float =
     fade_out_st = max(0.0, clip_dur - 2.0)
     af_filter = f"afade=t=in:st=0:d=1.0,afade=t=out:st={fade_out_st:.2f}:d=2.0"
 
-    info_text = f"{key_str.upper()}  ·  {bpm} BPM"
+    safe_key = str(key_str).replace(":", "\\:").replace("'", "\\'").strip()
+    safe_bpm = str(bpm).replace(":", "\\:").replace("'", "\\'").strip()
+    info_text = f"{safe_key.upper()}  ·  {safe_bpm} BPM"
     cta_text = "listen full version now"
     font_bold = "C\\:/Windows/Fonts/segoeuib.ttf" if os.path.exists("C:/Windows/Fonts/segoeuib.ttf") else "C\\:/Windows/Fonts/arialbd.ttf"
     font_reg = "C\\:/Windows/Fonts/segoeui.ttf" if os.path.exists("C:/Windows/Fonts/segoeui.ttf") else "C\\:/Windows/Fonts/arial.ttf"
@@ -173,12 +175,11 @@ def build_short_video_cmd(p_dir: str, beat_duration: float, short_start: float =
         cmd = [
             FFMPEG_PATH, "-y",
             "-loop", "1", "-r", "30", "-i", img_source,
-            "-tune", "stillimage",
             "-ss", f"{actual_start:.2f}", "-t", f"{clip_dur:.2f}", "-i", mp3_path,
             "-map", "0:v:0",
             "-map", "1:a:0",
             "-t", f"{clip_dur:.2f}",
-            "-c:v", "libx264", "-preset", "veryfast",
+            "-c:v", "libx264", "-preset", "veryfast", "-tune", "stillimage",
             "-vf", vf_9_16,
             "-af", af_filter,
             "-c:a", "aac", "-b:a", "320k",

@@ -46,6 +46,11 @@ def list_projects(include_completed: bool = False):
         name = p["name"]
         p_dir = os.path.join(PROJECTS_DIR, name)
         p["render_job"] = RENDER_JOBS.get(name)
+
+        short_file = os.path.join(p_dir, "short_reel_video.mp4")
+        p["short_video_mtime"] = int(os.path.getmtime(short_file)) if os.path.exists(short_file) else 0
+        final_file = os.path.join(p_dir, "final_youtube_video.mp4")
+        p["main_video_mtime"] = int(os.path.getmtime(final_file)) if os.path.exists(final_file) else 0
         
         # Format duration string
         dur_sec = p.get("duration_sec", 0.0) or 0.0

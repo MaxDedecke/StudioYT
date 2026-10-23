@@ -251,7 +251,13 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
 
   const handleStartRender = async (mode: 'both' | 'main_only' | 'short_only') => {
     setIsRendering(true);
-    showToast('Render-Pipeline gestartet...');
+    const label =
+      mode === 'main_only'
+        ? '1440p YouTube-Video'
+        : mode === 'short_only'
+        ? '9:16 Short & Reel'
+        : 'Beide Videos (1440p + Short)';
+    showToast(`Rendere ${label}...`);
     try {
       await triggerRender(project.name, mode, shortStart, shortDur);
       onRefresh();
@@ -654,8 +660,12 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
           </div>
           <div className="flex items-center justify-between text-xs text-zinc-400">
             <div className="flex gap-4">
-              <span>1440p YouTube: <strong className="text-zinc-200">{renderJob?.main_percent || 0}%</strong></span>
-              <span>Short / Reel: <strong className="text-zinc-200">{renderJob?.short_percent || 0}%</strong></span>
+              {renderJob?.mode !== 'short_only' && (
+                <span>1440p YouTube: <strong className="text-zinc-200">{renderJob?.main_percent || 0}%</strong></span>
+              )}
+              {renderJob?.mode !== 'main_only' && (
+                <span>Short / Reel: <strong className="text-zinc-200">{renderJob?.short_percent || 0}%</strong></span>
+              )}
             </div>
             <div>
               {renderJob?.current_time_str} · {renderJob?.speed} · ETA: {renderJob?.eta_str}
@@ -871,6 +881,16 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleStartRender(videoMode === 'main' ? 'main_only' : 'short_only')}
+                    disabled={isRendering || isJobActive}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-600/20 hover:bg-purple-600/35 border border-purple-500/40 text-purple-200 hover:text-white text-xs font-semibold disabled:opacity-50 transition-colors shadow-sm"
+                    title={videoMode === 'main' ? 'Nur das 1440p YouTube-Video neu rendern' : 'Nur das 9:16 Short neu rendern'}
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isRendering || isJobActive ? 'animate-spin' : ''}`} />
+                    <span>{videoMode === 'main' ? '1440p einzeln rendern' : 'Short einzeln rendern'}</span>
+                  </button>
+
                   <a
                     href={videoMode === 'main' ? mainVideoUrl : shortVideoUrl}
                     download={videoMode === 'main' ? `${project.name}_1440p.mp4` : `${project.name}_reel.mp4`}
@@ -975,22 +995,45 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
 
               {/* Render Action Buttons */}
               <div className="flex flex-col gap-2.5 pt-4 border-t border-white/[0.08]">
+                <div className="text-[11px] font-bold text-zinc-400 mb-0.5 flex items-center justify-between">
+                  <span>Render-Optionen:</span>
+                  <span className="text-zinc-500 font-normal">Separat oder beides</span>
+                </div>
+
+                {/* Nur 1440p YouTube-Video */}
                 <button
-                  onClick={() => handleStartRender('both')}
+                  onClick={() => handleStartRender('main_only')}
                   disabled={isRendering || isJobActive}
-                  className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 text-white text-xs font-semibold shadow-md shadow-purple-500/20 flex items-center justify-center gap-2"
+                  className="w-full py-2.5 px-3.5 rounded-xl bg-purple-600/20 hover:bg-purple-600/35 border border-purple-500/40 disabled:opacity-50 text-purple-200 hover:text-white text-xs font-semibold shadow-sm flex items-center justify-between gap-2 transition-all group"
                 >
-                  <RefreshCw className={`w-4 h-4 ${isRendering || isJobActive ? 'animate-spin' : ''}`} />
-                  <span>Beide neu rendern (1440p + Short)</span>
+                  <div className="flex items-center gap-2">
+                    <Video className="w-4 h-4 text-purple-400 group-hover:scale-110 transition-transform" />
+                    <span>Nur 1440p YouTube-Video rendern</span>
+                  </div>
+                  <span className="text-[10px] bg-purple-500/30 px-2 py-0.5 rounded text-purple-300 font-mono font-bold">16:9</span>
                 </button>
 
+                {/* Nur 9:16 Short & Reel */}
                 <button
                   onClick={() => handleStartRender('short_only')}
                   disabled={isRendering || isJobActive}
-                  className="w-full py-2 px-4 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] disabled:opacity-50 text-zinc-200 text-xs font-semibold flex items-center justify-center gap-2"
+                  className="w-full py-2.5 px-3.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/35 border border-indigo-500/40 disabled:opacity-50 text-indigo-200 hover:text-white text-xs font-semibold shadow-sm flex items-center justify-between gap-2 transition-all group"
                 >
-                  <Scissors className="w-4 h-4 text-purple-400" />
-                  <span>Nur 9:16 Short neu schneiden</span>
+                  <div className="flex items-center gap-2">
+                    <Scissors className="w-4 h-4 text-indigo-400 group-hover:scale-110 transition-transform" />
+                    <span>Nur 9:16 Short & Reel neu schneiden</span>
+                  </div>
+                  <span className="text-[10px] bg-indigo-500/30 px-2 py-0.5 rounded text-indigo-300 font-mono font-bold">9:16</span>
+                </button>
+
+                {/* Beide gleichzeitig */}
+                <button
+                  onClick={() => handleStartRender('both')}
+                  disabled={isRendering || isJobActive}
+                  className="w-full py-2.5 px-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 text-white text-xs font-semibold shadow-md shadow-purple-500/20 flex items-center justify-center gap-2 transition-all"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isRendering || isJobActive ? 'animate-spin' : ''}`} />
+                  <span>Beide neu rendern (1440p + Short)</span>
                 </button>
               </div>
             </div>

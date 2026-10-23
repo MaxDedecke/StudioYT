@@ -187,7 +187,6 @@ def build_short_video_cmd(p_dir: str, beat_duration: float, short_start: float =
             output_short
         ]
     return cmd, clip_dur
-    return cmd, clip_dur
 
 def render_pipeline_worker(project_name: str, mode: str = "both", short_start: float = 12.0, short_duration: float = 30.0):
     p_dir = os.path.join(PROJECTS_DIR, project_name)
@@ -230,7 +229,12 @@ def render_pipeline_worker(project_name: str, mode: str = "both", short_start: f
             pass
 
         job["stage"] = "done"
-        job["stage_label"] = "Pipeline abgeschlossen: 1440p Hauptvideo & 9:16 Short/Reel fertig!" if mode == "both" else "Video fertig gerendert!"
+        if mode == "main_only":
+            job["stage_label"] = "1440p YouTube-Video erfolgreich gerendert!"
+        elif mode == "short_only":
+            job["stage_label"] = "9:16 Short & Reel erfolgreich geschnitten!"
+        else:
+            job["stage_label"] = "Pipeline abgeschlossen: 1440p Hauptvideo & 9:16 Short/Reel fertig!"
         job["percent"] = 100
         job["eta_str"] = "0s"
         job["active"] = False
@@ -255,7 +259,7 @@ def start_render_pipeline(project_name: str, mode: str = "both", short_start: fl
             "stage_label": "Initialisiere FFmpeg Render-Pipeline...",
             "percent": 2,
             "main_percent": 100 if mode == "short_only" else 0,
-            "short_percent": 0,
+            "short_percent": 100 if mode == "main_only" else 0,
             "current_time_str": "00:00 / --:--",
             "speed": "-",
             "eta_str": "Berechne...",

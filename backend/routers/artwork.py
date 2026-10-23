@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from backend.config import PROJECTS_DIR
 from backend.services.artwork_service import assign_unique_artwork, analyze_artwork_and_build_loop_prompt
+from backend.services.thumbnail_service import generate_brand_thumbnails
 from backend.services.drive_service import sync_project_to_drive
 
 router = APIRouter(prefix="/api", tags=["artwork"])
@@ -23,6 +24,10 @@ def regenerate_artwork(data: RegenerateArtworkRequest):
 
     try:
         prompt_text = assign_unique_artwork(p_dir, project_name, force_new=True)
+        try:
+            generate_brand_thumbnails(p_dir)
+        except Exception as e:
+            print(f"Warning: could not regenerate thumbnails: {e}")
         with open(os.path.join(p_dir, "gemini_prompt.txt"), "w", encoding="utf-8") as f:
             f.write(prompt_text)
         threading.Thread(target=sync_project_to_drive, args=(project_name,), daemon=True).start()

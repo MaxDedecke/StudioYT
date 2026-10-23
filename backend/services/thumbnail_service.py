@@ -92,24 +92,41 @@ def generate_brand_thumbnails(p_dir: str, brand_tag: str = "prodbyjmd") -> List[
         except Exception:
             pass
 
-    # Save brand tag marker
+    # Save artwork mtime and brand tag marker
     try:
+        with open(os.path.join(out_dir, "_artwork_mtime.txt"), "w", encoding="utf-8") as f:
+            f.write(str(os.path.getmtime(src_art)))
         with open(os.path.join(out_dir, "_brand_tag.txt"), "w", encoding="utf-8") as f:
             f.write(tag)
     except Exception:
         pass
 
-    # Default select first if none selected yet
+    # Ensure thumbnail.jpg is updated to the current artwork (using previous selection or style 1)
     sel_path = os.path.join(p_dir, SELECTED_NAME)
-    if not os.path.isfile(sel_path) and created:
+    chosen_file = None
+    marker = os.path.join(out_dir, "_selected.txt")
+    if os.path.isfile(marker):
+        try:
+            with open(marker, "r", encoding="utf-8") as f:
+                prev_name = os.path.basename(f.read().strip())
+                cand = os.path.join(out_dir, prev_name)
+                if os.path.isfile(cand):
+                    chosen_file = cand
+        except Exception:
+            pass
+
+    if not chosen_file and created:
         first_variant = os.path.join(out_dir, "style_1_badge.jpg")
         if os.path.isfile(first_variant):
-            shutil.copyfile(first_variant, sel_path)
-            try:
-                with open(os.path.join(out_dir, "_selected.txt"), "w", encoding="utf-8") as f:
-                    f.write(f"{THUMB_SUBDIR}/style_1_badge.jpg")
-            except Exception:
-                pass
+            chosen_file = first_variant
+
+    if chosen_file and os.path.isfile(chosen_file):
+        shutil.copyfile(chosen_file, sel_path)
+        try:
+            with open(os.path.join(out_dir, "_selected.txt"), "w", encoding="utf-8") as f:
+                f.write(f"{THUMB_SUBDIR}/{os.path.basename(chosen_file)}")
+        except Exception:
+            pass
 
     return created
 
@@ -121,6 +138,37 @@ def list_variants(p_dir: str) -> List[str]:
     return [f"{THUMB_SUBDIR}/{f}" for f in files]
 
 def thumbnail_state(p_dir: str, project_name: str) -> Dict[str, Any]:
+    src_art = os.path.join(p_dir, "artwork.jpg")
+    out_dir = os.path.join(p_dir, THUMB_SUBDIR)
+    mtime_file = os.path.join(out_dir, "_artwork_mtime.txt")
+
+    # Auto-refresh thumbnail styles if artwork.jpg is newer than thumbnails
+    needs_refresh = False
+    if os.path.isfile(src_art):
+        if not os.path.isdir(out_dir) or not list_variants(p_dir):
+            needs_refresh = True
+        elif os.path.isfile(mtime_file):
+            try:
+                with open(mtime_file, "r", encoding="utf-8") as f:
+                    saved_mtime = float(f.read().strip())
+                if abs(os.path.getmtime(src_art) - saved_mtime) > 0.5:
+                    needs_refresh = True
+            except Exception:
+                needs_refresh = True
+        else:
+            needs_refresh = True
+
+    if needs_refresh:
+        brand_marker = os.path.join(out_dir, "_brand_tag.txt")
+        brand_tag = "prodbyjmd"
+        if os.path.isfile(brand_marker):
+            try:
+                with open(brand_marker, "r", encoding="utf-8") as f:
+                    brand_tag = f.read().strip() or "prodbyjmd"
+            except Exception:
+                pass
+        generate_brand_thumbnails(p_dir, brand_tag=brand_tag)
+
     sel = os.path.join(p_dir, SELECTED_NAME)
     selected_src = ""
     marker = os.path.join(p_dir, THUMB_SUBDIR, "_selected.txt")

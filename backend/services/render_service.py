@@ -81,6 +81,8 @@ def build_main_video_cmd(p_dir: str) -> list:
     output_video = os.path.join(p_dir, "final_youtube_video.mp4")
     video_loop = os.path.join(p_dir, "video_loop.mp4")
     artwork_path = os.path.join(p_dir, "artwork.jpg")
+    thumb_path = os.path.join(p_dir, "thumbnail.jpg")
+    img_source = thumb_path if os.path.exists(thumb_path) else artwork_path
 
     if os.path.exists(video_loop):
         return [
@@ -98,15 +100,15 @@ def build_main_video_cmd(p_dir: str) -> list:
             output_video
         ]
     else:
-        sparkle_loop = os.path.join(BASE_DIR, "sparkle_loop_20s.mp4")
+        # Reines Bild (Brand-Thumbnail oder Artwork) + Beat ohne künstliche Effekte
         return [
             FFMPEG_PATH, "-y",
-            "-loop", "1", "-r", "30", "-i", artwork_path,
-            "-stream_loop", "-1", "-i", sparkle_loop,
+            "-loop", "1", "-r", "30", "-i", img_source,
             "-i", mp3_path,
-            "-filter_complex", "[0:v]scale=2560:1440,format=gbrp[bg];[1:v]scale=2560:1440,format=gbrp[sp];[bg][sp]blend=all_mode=addition,format=yuv420p[v]",
-            "-map", "[v]", "-map", "2:a",
-            "-c:v", "libx264", "-preset", "veryfast",
+            "-map", "0:v:0",
+            "-map", "1:a:0",
+            "-c:v", "libx264", "-preset", "veryfast", "-tune", "stillimage",
+            "-vf", "scale=2560:1440:force_original_aspect_ratio=decrease,pad=2560:1440:(ow-iw)/2:(oh-ih)/2:black,setsar=1",
             "-c:a", "aac", "-b:a", "320k",
             "-pix_fmt", "yuv420p",
             "-shortest",
@@ -118,8 +120,9 @@ def build_short_video_cmd(p_dir: str, beat_duration: float, short_start: float =
     mp3_path = os.path.join(p_dir, "beat.mp3")
     output_short = os.path.join(p_dir, "short_reel_video.mp4")
     video_loop = os.path.join(p_dir, "video_loop.mp4")
-    main_video = os.path.join(p_dir, "final_youtube_video.mp4")
     artwork_path = os.path.join(p_dir, "artwork.jpg")
+    thumb_path = os.path.join(p_dir, "thumbnail.jpg")
+    img_source = thumb_path if os.path.exists(thumb_path) else artwork_path
 
     project_name = os.path.basename(p_dir)
     analysis = analyze_beat_audio(p_dir, project_name, force=False)
@@ -150,11 +153,10 @@ def build_short_video_cmd(p_dir: str, beat_duration: float, short_start: float =
     )
     vf_9_16 = f"scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1,{draw_info},{draw_cta}"
 
-    source_vid = video_loop if os.path.exists(video_loop) else (main_video if os.path.exists(main_video) else None)
-    if source_vid:
+    if os.path.exists(video_loop):
         cmd = [
             FFMPEG_PATH, "-y",
-            "-stream_loop", "-1", "-i", source_vid,
+            "-stream_loop", "-1", "-i", video_loop,
             "-ss", f"{actual_start:.2f}", "-t", f"{clip_dur:.2f}", "-i", mp3_path,
             "-map", "0:v:0",
             "-map", "1:a:0",
@@ -170,7 +172,8 @@ def build_short_video_cmd(p_dir: str, beat_duration: float, short_start: float =
     else:
         cmd = [
             FFMPEG_PATH, "-y",
-            "-loop", "1", "-r", "30", "-i", artwork_path,
+            "-loop", "1", "-r", "30", "-i", img_source,
+            "-tune", "stillimage",
             "-ss", f"{actual_start:.2f}", "-t", f"{clip_dur:.2f}", "-i", mp3_path,
             "-map", "0:v:0",
             "-map", "1:a:0",
@@ -183,6 +186,7 @@ def build_short_video_cmd(p_dir: str, beat_duration: float, short_start: float =
             "-movflags", "+faststart",
             output_short
         ]
+    return cmd, clip_dur
     return cmd, clip_dur
 
 def render_pipeline_worker(project_name: str, mode: str = "both", short_start: float = 12.0, short_duration: float = 30.0):

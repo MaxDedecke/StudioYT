@@ -900,6 +900,21 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
                   </div>
                 )}
               </div>
+
+              {/* Video Source Indicator */}
+              <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#090a0f] border border-white/[0.06] text-xs text-zinc-400">
+                {project.has_video_loop ? (
+                  <span className="flex items-center gap-1.5 text-cyan-400 font-semibold">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Basis: Dynamischer Gemini Video-Loop (video_loop.mp4)</span>
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1.5 text-zinc-300 font-medium">
+                    <ImageIcon className="w-3.5 h-3.5 text-purple-400" />
+                    <span>Basis: <strong>Brand-Thumbnail</strong> ({project.has_thumbnail ? 'thumbnail.jpg' : 'artwork.jpg'}) + Beat — Reines Standbild, keine Fremd-Effekte</span>
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Right Col: Recut & Render Settings */}
@@ -995,6 +1010,10 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
               <p className="text-xs text-zinc-400 mt-1 max-w-2xl leading-relaxed">
                 Veredelt direkt das Artwork deines Beats mit deiner Brand <strong className="text-purple-300">prodbyjmd</strong> in 5 verschiedenen, exklusiven Producer-Aesthetics (1280×720 YouTube-Standard). Klicke einfach auf deinen Lieblings-Style, um ihn als aktives Thumbnail festzulegen.
               </p>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 mt-2 rounded-lg bg-purple-500/10 border border-purple-500/20 text-[11px] font-semibold text-purple-300">
+                <Video className="w-3.5 h-3.5 text-purple-400" />
+                <span>Dieses Brand-Thumbnail wird automatisch als Bildquelle für das 1440p YouTube-Video &amp; Short verwendet.</span>
+              </div>
             </div>
 
             {thumbState?.has_selected && (

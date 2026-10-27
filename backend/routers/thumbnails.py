@@ -1,10 +1,16 @@
 import os
 import threading
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, UploadFile, File, Form
 from pydantic import BaseModel
 from typing import Optional
 from backend.config import PROJECTS_DIR
-from backend.services.thumbnail_service import thumbnail_state, select_variant, generate_brand_thumbnails
+from backend.services.thumbnail_service import (
+    thumbnail_state,
+    select_variant,
+    generate_brand_thumbnails,
+    save_custom_thumbnail,
+    delete_custom_thumbnail,
+)
 from backend.services.drive_service import sync_project_to_drive
 
 router = APIRouter(prefix="/api", tags=["thumbnails"])
@@ -55,3 +61,38 @@ def select_thumbnail(data: SelectThumbnailRequest):
 
     threading.Thread(target=sync_project_to_drive, args=(project_name,), daemon=True).start()
     return {"success": True}
+
+@router.post("/upload_thumbnail")
+async def upload_thumbnail(
+    file: UploadFile = File(...),
+    project: Optional[str] = Query(None),
+    project_form: Optional[str] = Form(None, alias="project")
+):
+    project_name = project or project_form
+    if not project_name:
+        raise HTTPException(status_code=400, detail="Project parameter is missing")
+
+    p_dir = os.path.join(PROJECTS_DIR, project_name)
+    if not os.path.isdir(p_dir):
+        raise HTTPException(status_code=400, detail="Project not found")
+
+    content = await file.read()
+    ext = os.path.splitext(file.filename or "")[1] or ".jpg"
+
+    res = save_custom_thumbnail(p_dir, content, ext)
+    if not res:
+        raise HTTPException(status_code=500, detail="Fehler beim Verarbeiten des Thumbnails")
+
+    threading.Thread(target=sync_project_to_drive, args=(project_name,), daemon=True).start()
+    return {"success": True, "selected_src": res, "state": thumbnail_state(p_dir, project_name)}
+
+@router.post("/delete_custom_thumbnail")
+def remove_custom_thumbnail(data: SelectThumbnailRequest):
+    project_name = data.project
+    p_dir = os.path.join(PROJECTS_DIR, project_name)
+    if not os.path.isdir(p_dir):
+        raise HTTPException(status_code=400, detail="Project not found")
+
+    delete_custom_thumbnail(p_dir)
+    threading.Thread(target=sync_project_to_drive, args=(project_name,), daemon=True).start()
+    return {"success": True, "state": thumbnail_state(p_dir, project_name)}

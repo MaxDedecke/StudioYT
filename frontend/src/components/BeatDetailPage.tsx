@@ -21,6 +21,7 @@ import {
   Save,
   Edit3,
   Music,
+  Trash2,
 } from 'lucide-react';
 import type { Project, ThumbnailState } from '../types';
 import {
@@ -33,6 +34,8 @@ import {
   getThumbnails,
   generateThumbnails,
   selectThumbnail,
+  uploadCustomThumbnail,
+  deleteCustomThumbnail,
   openExplorerFolder,
   updateBeatAudio,
 } from '../api';
@@ -290,6 +293,41 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
       onRefresh();
     } catch (e: any) {
       alert(e.message || 'Fehler beim Auswählen');
+    }
+  };
+
+  const thumbInputRef = useRef<HTMLInputElement | null>(null);
+  const [isUploadingThumb, setIsUploadingThumb] = useState(false);
+
+  const handleCustomThumbUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingThumb(true);
+    showToast('Lade eigenes Thumbnail hoch & optimiere auf 16:9...');
+    try {
+      const res = await uploadCustomThumbnail(project.name, file);
+      setThumbState(res.state);
+      project.has_thumbnail = true;
+      showToast('Eigenes Thumbnail erfolgreich aktiviert!');
+      onRefresh();
+    } catch (err: any) {
+      alert(err.message || 'Fehler beim Thumbnail-Upload');
+    } finally {
+      setIsUploadingThumb(false);
+      if (thumbInputRef.current) thumbInputRef.current.value = '';
+    }
+  };
+
+  const handleDeleteCustomThumbnail = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm('Eigenes Thumbnail entfernen und zu den generierten Styles zurückkehren?')) return;
+    try {
+      const res = await deleteCustomThumbnail(project.name);
+      setThumbState(res.state);
+      showToast('Eigenes Thumbnail entfernt');
+      onRefresh();
+    } catch (err: any) {
+      alert(err.message || 'Fehler beim Entfernen');
     }
   };
 
@@ -1044,6 +1082,14 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
       {/* TAB 3: THUMBNAIL STUDIO */}
       {activeTab === 'thumbnails' && (
         <div className="bg-[#101118] border border-white/[0.08] rounded-2xl p-6 flex flex-col gap-6">
+          <input
+            ref={thumbInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/jpg"
+            className="hidden"
+            onChange={handleCustomThumbUpload}
+          />
+
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
               <h2 className="text-base font-extrabold text-white flex items-center gap-2">
@@ -1051,7 +1097,7 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
                 <span>prodbyJMD Brand Thumbnail Studio</span>
               </h2>
               <p className="text-xs text-zinc-400 mt-1 max-w-2xl leading-relaxed">
-                Veredelt direkt das Artwork deines Beats mit deiner Brand <strong className="text-purple-300">prodbyjmd</strong> in 5 verschiedenen, exklusiven Producer-Aesthetics (1280×720 YouTube-Standard). Klicke einfach auf deinen Lieblings-Style, um ihn als aktives Thumbnail festzulegen.
+                Wähle aus deinen 5 generierten Brand-Aesthetics mit <strong className="text-purple-300">prodbyjmd</strong> oder lade dein eigenes Custom-Thumbnail hoch (wird automatisch auf 16:9 YouTube 1280×720 skaliert).
               </p>
               <div className="inline-flex items-center gap-2 px-3 py-1.5 mt-2 rounded-lg bg-purple-500/10 border border-purple-500/20 text-[11px] font-semibold text-purple-300">
                 <Video className="w-3.5 h-3.5 text-purple-400" />
@@ -1059,16 +1105,37 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
               </div>
             </div>
 
-            {thumbState?.has_selected && (
-              <a
-                href={`/projects/${project.name}/thumbnail.jpg`}
-                download={`${project.name}_thumbnail.jpg`}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-500/20"
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <button
+                type="button"
+                onClick={() => thumbInputRef.current?.click()}
+                disabled={isUploadingThumb}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-md shadow-purple-500/20 disabled:opacity-50 transition-colors"
               >
-                <Download className="w-4 h-4" />
-                <span>Aktives Thumbnail herunterladen</span>
-              </a>
-            )}
+                {isUploadingThumb ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Optimiere & aktiviere...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4" />
+                    <span>Eigenes Thumbnail hochladen</span>
+                  </>
+                )}
+              </button>
+
+              {thumbState?.has_selected && (
+                <a
+                  href={`/projects/${project.name}/thumbnail.jpg?t=${project.updated_at || 0}`}
+                  download={`${project.name}_thumbnail.jpg`}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-500/20"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Aktives Thumbnail herunterladen</span>
+                </a>
+              )}
+            </div>
           </div>
 
           {/* Brand Tag Input Row */}
@@ -1121,26 +1188,49 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
             </button>
           </div>
 
-          {/* Grid of Brand Thumbnails */}
+          {/* Grid of Brand Thumbnails + Upload Option */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            {/* Upload Card for Custom Thumbnail (if not yet uploaded) */}
+            {!thumbState?.variants.some((v) => v.includes('custom_uploaded')) && (
+              <div
+                onClick={() => thumbInputRef.current?.click()}
+                className="p-4 rounded-2xl border-2 border-dashed border-purple-500/40 hover:border-purple-400/80 cursor-pointer bg-purple-500/[0.04] hover:bg-purple-500/[0.08] transition-all flex flex-col items-center justify-center gap-2.5 min-h-[170px] group"
+              >
+                <div className="w-10 h-10 rounded-full bg-purple-500/20 group-hover:bg-purple-500/30 text-purple-300 flex items-center justify-center transition-colors">
+                  {isUploadingThumb ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
+                </div>
+                <div className="text-center">
+                  <div className="text-xs font-bold text-white group-hover:text-purple-200 transition-colors">
+                    Eigenes Thumbnail hochladen
+                  </div>
+                  <div className="text-[10px] text-zinc-400 mt-1">
+                    PNG, JPG oder WEBP (16:9 auto)
+                  </div>
+                </div>
+              </div>
+            )}
+
             {thumbState?.variants.map((v) => {
               const isSelected = thumbState.selected_src === v;
               const fname = v.split('/').pop() || '';
+              const isCustom = fname === 'custom_uploaded.jpg';
               const styleName = thumbState.style_labels?.[fname] || fname.replace('.jpg', '').replace('style_', 'Style ');
 
               return (
                 <div
                   key={v}
                   onClick={() => handleSelectThumbnail(v)}
-                  className={`p-2.5 rounded-2xl cursor-pointer transition-all duration-200 border-2 ${
+                  className={`p-2.5 rounded-2xl cursor-pointer transition-all duration-200 border-2 relative group/card ${
                     isSelected
                       ? 'bg-emerald-500/10 border-emerald-500 shadow-xl shadow-emerald-500/15'
+                      : isCustom
+                      ? 'bg-[#120e1d] border-purple-500/30 hover:border-purple-500/60'
                       : 'bg-[#0d0e15] border-white/[0.06] hover:border-purple-500/40'
                   }`}
                 >
                   <div className="relative aspect-video rounded-xl overflow-hidden bg-black">
                     <img
-                      src={`/projects/${project.name}/${v}`}
+                      src={`/projects/${project.name}/${v}?t=${project.updated_at || 0}`}
                       alt={styleName}
                       className="w-full h-full object-cover"
                     />
@@ -1150,6 +1240,21 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
                         <span>AKTIV</span>
                       </div>
                     )}
+                    {isCustom && !isSelected && (
+                      <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-purple-600/90 text-white text-[10px] font-bold shadow-md">
+                        CUSTOM
+                      </div>
+                    )}
+                    {isCustom && (
+                      <button
+                        type="button"
+                        onClick={handleDeleteCustomThumbnail}
+                        title="Eigenes Thumbnail löschen"
+                        className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/70 hover:bg-red-600 text-zinc-300 hover:text-white transition-colors shadow"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                     {project.duration_str && project.duration_str !== '--:--' && (
                       <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/85 text-white text-[10px] font-semibold">
                         {project.duration_str}
@@ -1158,8 +1263,15 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
                   </div>
 
                   <div className="mt-2.5 px-1">
-                    <div className="text-xs font-bold text-zinc-200 truncate">
-                      {styleName}
+                    <div className="flex items-center justify-between gap-1">
+                      <div className="text-xs font-bold text-zinc-200 truncate">
+                        {styleName}
+                      </div>
+                      {isCustom && (
+                        <span className="text-[10px] font-bold text-purple-400 bg-purple-500/20 px-1.5 py-0.5 rounded flex-shrink-0">
+                          Dein Upload
+                        </span>
+                      )}
                     </div>
                     <div className="text-[11px] text-zinc-500 mt-0.5">
                       {isSelected ? '✓ Aktives YouTube-Thumbnail' : 'Klicken zum Aktivieren'}

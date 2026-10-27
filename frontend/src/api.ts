@@ -144,6 +144,27 @@ export async function selectThumbnail(project: string, file: string): Promise<vo
   if (!res.ok) throw new Error('Fehler beim Auswählen des Thumbnails');
 }
 
+export async function uploadCustomThumbnail(project: string, file: File): Promise<{ success: boolean; selected_src: string; state: ThumbnailState }> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch(`${BASE_URL}/api/upload_thumbnail?project=${encodeURIComponent(project)}`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) throw new Error('Fehler beim Hochladen des Thumbnails');
+  return res.json();
+}
+
+export async function deleteCustomThumbnail(project: string): Promise<{ success: boolean; state: ThumbnailState }> {
+  const res = await fetch(`${BASE_URL}/api/delete_custom_thumbnail`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ project, file: 'custom_uploaded.jpg' }),
+  });
+  if (!res.ok) throw new Error('Fehler beim Löschen des Thumbnails');
+  return res.json();
+}
+
 export async function getConfig(): Promise<AppConfig> {
   const res = await fetch(`${BASE_URL}/api/config`);
   if (!res.ok) throw new Error('Fehler beim Laden der Einstellungen');

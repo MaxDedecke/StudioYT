@@ -10,6 +10,7 @@ THUMB_SUBDIR = "thumbnails"
 SELECTED_NAME = "thumbnail.jpg"
 
 STYLE_LABELS = {
+    "custom_uploaded.jpg": "Eigenes Thumbnail (Upload)",
     "style_1_badge.jpg": "Studio Pill Badge",
     "style_2_lower_bar.jpg": "Cinematic Letterspaced Bar",
     "style_3_corner_rec.jpg": "Session ● REC Tag",
@@ -210,4 +211,82 @@ def select_variant(p_dir: str, rel_file: str) -> bool:
             f.write(f"{THUMB_SUBDIR}/{name}")
     except Exception:
         pass
+    return True
+
+def save_custom_thumbnail(p_dir: str, content: bytes, ext: str = ".jpg") -> Optional[str]:
+    """Processes an uploaded custom thumbnail, standardizes it to 1280x720 16:9 JPEG,
+    and sets it as the active thumbnail.
+    """
+    out_dir = os.path.join(p_dir, THUMB_SUBDIR)
+    os.makedirs(out_dir, exist_ok=True)
+
+    safe_ext = ext if ext.startswith(".") else f".{ext}"
+    if not safe_ext or safe_ext.lower() not in [".jpg", ".jpeg", ".png", ".webp", ".bmp"]:
+        safe_ext = ".jpg"
+
+    temp_in = os.path.join(out_dir, f"_temp_upload{safe_ext}")
+    target_name = "custom_uploaded.jpg"
+    target_path = os.path.join(out_dir, target_name)
+
+    try:
+        with open(temp_in, "wb") as f:
+            f.write(content)
+
+        cmd = [
+            FFMPEG_PATH, "-y",
+            "-i", temp_in,
+            "-vf", "scale=1280:720:force_original_aspect_ratio=increase,crop=1280:720,setsar=1",
+            "-q:v", "2",
+            target_path
+        ]
+        proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
+        if proc.returncode != 0 or not os.path.isfile(target_path):
+            return None
+
+        # Copy to active thumbnail.jpg
+        shutil.copyfile(target_path, os.path.join(p_dir, SELECTED_NAME))
+
+        # Mark as active selected thumbnail
+        try:
+            with open(os.path.join(out_dir, "_selected.txt"), "w", encoding="utf-8") as f:
+                f.write(f"{THUMB_SUBDIR}/{target_name}")
+        except Exception:
+            pass
+
+        return f"{THUMB_SUBDIR}/{target_name}"
+    finally:
+        if os.path.isfile(temp_in):
+            try:
+                os.remove(temp_in)
+            except Exception:
+                pass
+
+def delete_custom_thumbnail(p_dir: str) -> bool:
+    """Removes the uploaded custom thumbnail and falls back to a generated brand style."""
+    out_dir = os.path.join(p_dir, THUMB_SUBDIR)
+    target_path = os.path.join(out_dir, "custom_uploaded.jpg")
+    if os.path.isfile(target_path):
+        try:
+            os.remove(target_path)
+        except Exception:
+            pass
+
+    marker = os.path.join(out_dir, "_selected.txt")
+    selected_name = ""
+    if os.path.isfile(marker):
+        try:
+            with open(marker, "r", encoding="utf-8") as f:
+                selected_name = f.read().strip()
+        except Exception:
+            pass
+
+    if "custom_uploaded.jpg" in selected_name:
+        fallback = os.path.join(out_dir, "style_1_badge.jpg")
+        if os.path.isfile(fallback):
+            shutil.copyfile(fallback, os.path.join(p_dir, SELECTED_NAME))
+            try:
+                with open(marker, "w", encoding="utf-8") as f:
+                    f.write(f"{THUMB_SUBDIR}/style_1_badge.jpg")
+            except Exception:
+                pass
     return True

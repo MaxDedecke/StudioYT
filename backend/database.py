@@ -3,6 +3,9 @@ import os
 import time
 from typing import Dict, Any, List, Optional
 from backend.config import DB_FILE, PROJECTS_DIR, get_config
+from backend.services.drive_service import sync_artwork_from_drive
+from backend.services.thumbnail_service import generate_brand_thumbnails
+from backend.services.artwork_service import analyze_artwork_and_build_loop_prompt
 
 def get_db():
     conn = sqlite3.connect(DB_FILE, check_same_thread=False)
@@ -56,6 +59,52 @@ def scan_and_sync_projects(analyze_fn, is_backup_fn) -> List[Dict[str, Any]]:
         p_dir = os.path.join(PROJECTS_DIR, name)
         if not os.path.isdir(p_dir):
             continue
+
+        # 1. Sync artwork from cloud (Google Drive / OneDrive) if newer
+        art_changed = False
+        try:
+            if sync_artwork_from_drive(name):
+                art_changed = True
+        except Exception:
+            pass
+
+        # 2. Check if local artwork.jpg was changed directly on disk
+        art_path = os.path.join(p_dir, "artwork.jpg")
+        thumb_mtime_file = os.path.join(p_dir, "thumbnails", "_artwork_mtime.txt")
+        if os.path.isfile(art_path):
+            current_art_mtime = os.path.getmtime(art_path)
+            saved_art_mtime = 0.0
+            if os.path.isfile(thumb_mtime_file):
+                try:
+                    with open(thumb_mtime_file, "r", encoding="utf-8") as f:
+                        saved_art_mtime = float(f.read().strip())
+                except Exception:
+                    pass
+            if abs(current_art_mtime - saved_art_mtime) > 1.0:
+                art_changed = True
+
+        if art_changed and os.path.isfile(art_path):
+            try:
+                generate_brand_thumbnails(p_dir)
+            except Exception:
+                pass
+            prompt_mtime_file = os.path.join(p_dir, "thumbnails", "_prompt_art_mtime.txt")
+            last_prompt_mtime = 0.0
+            if os.path.isfile(prompt_mtime_file):
+                try:
+                    with open(prompt_mtime_file, "r", encoding="utf-8") as f:
+                        last_prompt_mtime = float(f.read().strip())
+                except Exception:
+                    pass
+            if abs(os.path.getmtime(art_path) - last_prompt_mtime) > 1.0:
+                try:
+                    prompt_text = analyze_artwork_and_build_loop_prompt(art_path)
+                    with open(os.path.join(p_dir, "gemini_prompt.txt"), "w", encoding="utf-8") as f:
+                        f.write(prompt_text)
+                    with open(prompt_mtime_file, "w", encoding="utf-8") as f:
+                        f.write(str(os.path.getmtime(art_path)))
+                except Exception:
+                    pass
         
         has_mp3 = 1 if os.path.exists(os.path.join(p_dir, "beat.mp3")) else 0
         has_art = 1 if os.path.exists(os.path.join(p_dir, "artwork.jpg")) else 0
@@ -79,6 +128,7 @@ def scan_and_sync_projects(analyze_fn, is_backup_fn) -> List[Dict[str, Any]]:
         
         if row:
             changed = (
+                art_changed or
                 row["bpm"] != bpm or
                 row["key"] != key_str or
                 row["has_final_video"] != has_final or

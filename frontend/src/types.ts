@@ -40,6 +40,7 @@ export interface Project {
   metadata_text?: string;
   short_video_mtime?: number;
   main_video_mtime?: number;
+  artwork_mtime?: number;
 }
 
 export interface AppConfig {

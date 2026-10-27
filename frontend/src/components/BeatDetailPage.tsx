@@ -26,6 +26,7 @@ import {
 import type { Project, ThumbnailState } from '../types';
 import {
   regenerateArtwork,
+  uploadArtwork,
   analyzeArtwork,
   uploadVideoLoop,
   triggerRender,
@@ -198,6 +199,30 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
   };
 
   // Actions
+  const artUploadRef = useRef<HTMLInputElement | null>(null);
+  const [isUploadingArt, setIsUploadingArt] = useState(false);
+
+  const handleUploadArtwork = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingArt(true);
+    showToast('Lade eigenes Beat-Bild hoch & starte KI-Vision-Analyse...');
+    try {
+      const res = await uploadArtwork(project.name, file);
+      project.has_artwork = true;
+      project.prompt_text = res.prompt_text;
+      project.artwork_mtime = res.artwork_mtime;
+      showToast('Eigenes Beat-Bild erfolgreich übernommen & Loop-Prompt aktualisiert!');
+      loadThumbs(false);
+      onRefresh();
+    } catch (err: any) {
+      alert(err.message || 'Fehler beim Hochladen des Bildes');
+    } finally {
+      setIsUploadingArt(false);
+      if (artUploadRef.current) artUploadRef.current.value = '';
+    }
+  };
+
   const handleRegenArtwork = async () => {
     showToast('Generiere neues Artwork & analysiere Bild für Gemini Loop...');
     try {
@@ -434,13 +459,22 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
         </div>
       </div>
 
+      {/* Hidden Artwork File Input */}
+      <input
+        ref={artUploadRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/jpg"
+        className="hidden"
+        onChange={handleUploadArtwork}
+      />
+
       {/* HERO BEAT HEADER & AUDIO PLAYER */}
       <div className="bg-[#101118] border border-white/[0.08] rounded-2xl p-6 shadow-xl flex flex-col md:flex-row gap-6 items-start md:items-center">
         {/* Cover Preview (140x140) */}
         <div className="relative group w-36 h-36 rounded-xl overflow-hidden bg-black border border-white/[0.1] flex-shrink-0 shadow-lg">
           {project.has_artwork ? (
             <img
-              src={`/projects/${project.name}/artwork.jpg?t=${project.updated_at || 0}`}
+              src={`/projects/${project.name}/artwork.jpg?t=${project.artwork_mtime || project.updated_at || 0}`}
               alt={project.name}
               className="w-full h-full object-cover"
             />
@@ -449,13 +483,23 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
               <ImageIcon className="w-8 h-8" />
             </div>
           )}
-          <button
-            onClick={handleRegenArtwork}
-            className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 text-[11px] font-semibold text-white"
-          >
-            <Sparkles className="w-4 h-4 text-purple-400" />
-            <span>Bild wechseln</span>
-          </button>
+          <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1.5 p-2 text-[11px] font-semibold text-white">
+            <button
+              onClick={() => artUploadRef.current?.click()}
+              disabled={isUploadingArt}
+              className="w-full py-1.5 px-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white flex items-center justify-center gap-1.5 shadow text-xs font-bold transition-colors"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              <span>Eigenes Bild</span>
+            </button>
+            <button
+              onClick={handleRegenArtwork}
+              className="w-full py-1 px-2 rounded-lg bg-white/[0.1] hover:bg-white/[0.2] text-zinc-200 flex items-center justify-center gap-1 text-[11px] transition-colors"
+            >
+              <Sparkles className="w-3 h-3 text-purple-400" />
+              <span>KI-Bild</span>
+            </button>
+          </div>
         </div>
 
         {/* Info & Player */}
@@ -779,7 +823,24 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
                 <Sparkles className="w-4 h-4 text-purple-400" />
                 <span>Lithen Green-Night Artwork</span>
               </h2>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={() => artUploadRef.current?.click()}
+                  disabled={isUploadingArt}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.08] hover:bg-white/[0.14] border border-white/[0.1] text-white text-xs font-semibold shadow transition-colors"
+                >
+                  {isUploadingArt ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Lade hoch...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Eigenes Bild hochladen</span>
+                    </>
+                  )}
+                </button>
                 <button
                   onClick={handleAnalyzeArtwork}
                   disabled={isAnalyzingArtwork}
@@ -794,20 +855,27 @@ export const BeatDetailPage: React.FC<BeatDetailPageProps> = ({
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow transition-colors"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>Neues Bild generieren</span>
+                  <span>Neues KI-Bild</span>
                 </button>
               </div>
             </div>
 
             <div className="aspect-video rounded-xl overflow-hidden bg-black border border-white/[0.08] relative group">
               <img
-                src={`/projects/${project.name}/artwork.jpg?t=${project.updated_at || 0}`}
+                src={`/projects/${project.name}/artwork.jpg?t=${project.artwork_mtime || project.updated_at || 0}`}
                 alt="Artwork"
                 className="w-full h-full object-cover"
               />
               <div className="absolute bottom-3 left-3 bg-black/75 backdrop-blur-md px-3 py-1 rounded-md text-[11px] text-zinc-300 border border-white/10">
                 1:1 Widescreen Grade · 2560x1440 Master
               </div>
+            </div>
+
+            <div className="p-3 bg-[#090a0f] border border-white/[0.06] rounded-xl flex items-center gap-2.5 text-xs text-zinc-400">
+              <Cloud className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+              <span>
+                <strong>Google Drive Auto-Sync:</strong> Du kannst dein Bild direkt hier hochladen oder einfach die Datei <code className="text-white font-mono bg-white/[0.08] px-1 py-0.5 rounded">artwork.jpg</code> in deinem Google Drive Beat-Ordner austauschen. Das System übernimmt es automatisch.
+              </span>
             </div>
 
             <p className="text-xs text-zinc-400 leading-relaxed">

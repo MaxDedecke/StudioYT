@@ -66,7 +66,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
         <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-black border border-white/[0.1] flex-shrink-0 group-hover:border-purple-500/50 transition-colors">
           {project.has_artwork ? (
             <img
-              src={`/projects/${project.name}/artwork.jpg?t=${project.updated_at || 0}`}
+              src={`/projects/${project.name}/artwork.jpg?t=${project.artwork_mtime || project.updated_at || 0}`}
               alt={project.name}
               className="w-full h-full object-cover"
             />

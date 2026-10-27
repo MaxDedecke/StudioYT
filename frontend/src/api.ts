@@ -74,6 +74,17 @@ export async function regenerateArtwork(project: string): Promise<{ success: boo
   return res.json();
 }
 
+export async function uploadArtwork(project: string, file: File): Promise<{ success: boolean; project: string; prompt_text: string; artwork_mtime: number }> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch(`${BASE_URL}/api/upload_artwork?project=${encodeURIComponent(project)}`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) throw new Error('Fehler beim Hochladen des Artworks');
+  return res.json();
+}
+
 export async function analyzeArtwork(project: string): Promise<{ success: boolean; prompt_text: string }> {
   const res = await fetch(`${BASE_URL}/api/analyze_artwork`, {
     method: 'POST',
